@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -33,4 +35,20 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 	}
 
 	return &user, nil
+}
+
+func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, error) {
+	sql := `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`
+
+	var id uuid.UUID
+
+	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&id); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return uuid.Nil, fmt.Errorf("email alredy exists: %w", domain.ErrEmailAlreadyExists)
+		}
+		return uuid.Nil, fmt.Errorf("r.pool.QueryRow: %w", err)
+	}
+
+	return id, nil
 }
