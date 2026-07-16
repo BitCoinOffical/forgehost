@@ -28,3 +28,11 @@ func (s *Session) SaveToken(ctx context.Context, id uuid.UUID, value string, Ref
 	}
 	return nil
 }
+
+func (s *Session) DeleteToken(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s%s", tokenKey, id.String())
+	if err := s.rdb.Del(ctx, key).Err(); err != nil {
+		return fmt.Errorf("s.rdb.Del: %w", err)
+	}
+	return nil
+}
