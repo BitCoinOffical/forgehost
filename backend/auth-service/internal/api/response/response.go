@@ -21,9 +21,16 @@ func BadRequest(c *gin.Context, err error, msg string, logger *zap.Logger) {
 	})
 }
 
-func InternalServerError(c *gin.Context, msg string, err error, logger *zap.Logger) {
+func InternalServerError(c *gin.Context, err error, msg string, logger *zap.Logger) {
 	logger.Error(msg, zap.Error(err), zap.String("patch", c.FullPath()))
 	c.JSON(http.StatusInternalServerError, gin.H{
+		"error": err.Error(),
+	})
+}
+
+func Conflict(c *gin.Context, err error, msg string, logger *zap.Logger) {
+	logger.Error(msg, zap.Error(err), zap.String("patch", c.FullPath()))
+	c.JSON(http.StatusConflict, gin.H{
 		"error": err.Error(),
 	})
 }
