@@ -4,7 +4,12 @@ import (
 	"github.com/google/uuid"
 )
 
-type GoogleUser struct {
+type TokensDTO struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type GoogleUserDTO struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -22,7 +27,7 @@ type UsersLoginDTO struct {
 	Password string `json:"password"`
 }
 
-type OAuthAccount struct {
+type OAuthAccountDTO struct {
 	UserID         uuid.UUID `json:"user_id"`
 	Provider       string    `json:"provider"`
 	ProviderUserID string    `json:"provider_user_id"`

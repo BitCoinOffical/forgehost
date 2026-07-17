@@ -101,4 +101,10 @@ func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
 		return
 	}
 
+	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, tokens)
 }

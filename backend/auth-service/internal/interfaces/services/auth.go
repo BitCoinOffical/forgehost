@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -86,6 +87,39 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 
 	if err := s.sessions.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
 		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	}
+
+	return &models.Tokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDTO) (*models.Tokens, error) {
+	refreshToken := tokens.RefreshToken
+
+	user, err := s.tokens.ValidateToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("s.tokens.ValidateToken: %w", err)
+	}
+
+	savedToken, err := s.sessions.GetToken(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("s.sessions.GetToken: %w", err)
+	}
+
+	if savedToken != refreshToken {
+		return nil, domain.ErrInvalidCredentials
+	}
+
+	userID, err := uuid.Parse(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("uuid.Parse: %w", err)
+	}
+
+	accessToken, err := s.tokens.GenerateToken(userID, AccessTTL)
+	if err != nil {
+		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
 	return &models.Tokens{

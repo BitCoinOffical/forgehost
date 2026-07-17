@@ -2,7 +2,10 @@ package main
 
 import (
 	"BitCoinOffical/forgehost/auth-service/config"
+	postgresdb "BitCoinOffical/forgehost/auth-service/internal/adapters/postgres"
+	redisdb "BitCoinOffical/forgehost/auth-service/internal/adapters/redis"
 	"BitCoinOffical/forgehost/auth-service/internal/api"
+	"BitCoinOffical/forgehost/auth-service/internal/api/handlers"
 	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
 	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	zaplogger "BitCoinOffical/forgehost/auth-service/pkg/logger"
@@ -12,6 +15,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -31,15 +36,45 @@ func main() {
 		log.Fatal(err)
 	}
 
+	pool, err := postgresdb.NewPool(&postgresdb.PostgresConfig{
+		DBUser:     cfg.Postgres.DBUser,
+		DBPassword: cfg.Postgres.DBPassword,
+		DBHost:     cfg.Postgres.DBHost,
+		DBPort:     cfg.Postgres.DBHost,
+		DBName:     cfg.Postgres.DBName,
+	})
+
+	rdb, err := redisdb.NewRedis(&redisdb.RedisConfig{
+		RDBAddr: cfg.Redis.RDBSessionAddr,
+		RDBPort: cfg.Redis.RDBSessionPort,
+		RDBDB:   cfg.Redis.RDBSessionDB,
+		RDBPass: cfg.Redis.RDBPass,
+	})
+	if err != nil {
+		logger.Fatal("redis failed", zap.Error(err))
+	}
+	logger.Info("redis applied successfully")
+
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewAuthMiddleware(logger, manager)
-	serv := api.NewServer(&cfg.App, m)
+	srvs := handlers.NewServices(manager, rdb, pool)
+	handlrs := handlers.NewHandlers(logger, srvs)
+	serv := api.NewServer(&cfg.App, m, handlrs)
+
+	go func() {
+		if err := serv.Run(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	<-ctx.Done()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeoutSecond*time.Second)
 	defer cancel()
 
+	postgresdb.ClosePool(pool)
+	logger.Info("pool closesd")
+
 	if err := serv.ShutDown(shutdownCtx); err != nil {
-		log.Printf("shutdown error: %s", err)
+		log.Fatalf("shutdown error: %v", err)
 	}
 }

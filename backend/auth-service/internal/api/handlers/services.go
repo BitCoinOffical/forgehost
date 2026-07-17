@@ -12,21 +12,21 @@ import (
 )
 
 type Services struct {
-	service *services.AuthService
+	Service *services.AuthService
 }
 
 func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool) *Services {
 	sessions := session.NewSession(rdb)
 	repo := repo.NewAuthRepo(pool)
 	service := services.NewAuthService(repo, manager, sessions)
-	return &Services{service: service}
+	return &Services{Service: service}
 }
 
 type Handlers struct {
-	auth AuthHandler
+	Auth *AuthHandler
 }
 
-func NewHandlers(logger *zap.Logger, srv Services) *Handlers {
-	auth := NewAuthHandler(logger, srv.service)
-	return &Handlers{auth: *auth}
+func NewHandlers(logger *zap.Logger, srv *Services) *Handlers {
+	auth := NewAuthHandler(logger, srv.Service)
+	return &Handlers{Auth: auth}
 }

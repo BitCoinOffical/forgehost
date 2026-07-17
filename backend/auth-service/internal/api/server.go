@@ -2,6 +2,7 @@ package api
 
 import (
 	"BitCoinOffical/forgehost/auth-service/config"
+	"BitCoinOffical/forgehost/auth-service/internal/api/handlers"
 	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
 	"context"
 	"fmt"
@@ -19,11 +20,14 @@ type Server struct {
 	engine *gin.Engine
 	m      *middleware.Middleware
 	server *http.Server
+	h      *handlers.Handlers
 }
 
-func NewServer(cfg *config.AppConfig, m *middleware.Middleware) *Server {
+func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers) *Server {
 	engine := gin.New()
 	return &Server{
+		m:      m,
+		h:      h,
 		engine: engine,
 		server: &http.Server{
 			Addr:        cfg.Port,
@@ -36,10 +40,10 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware) *Server {
 func (s *Server) Run() {
 	auth := s.engine.Group("/auth")
 	{
-		auth.POST("/register")
-		auth.POST("/login")
-		auth.POST("/logout")
-		auth.POST("/refresh")
+		auth.POST("/register", s.h.Auth.Register)
+		auth.POST("/login", s.h.Auth.Login)
+		auth.POST("/logout", s.h.Auth.Logout)
+		auth.POST("/refresh", s.h.Auth.UpdateAccessToken)
 
 		auth.GET("/login/google")
 		auth.GET("/login/google/callback")
