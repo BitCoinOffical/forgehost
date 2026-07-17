@@ -37,7 +37,7 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 	}
 }
 
-func (s *Server) Run() {
+func (s *Server) Run() error {
 	auth := s.engine.Group("/auth")
 	{
 		auth.POST("/register", s.h.Auth.Register)
@@ -55,6 +55,8 @@ func (s *Server) Run() {
 		auth.POST("/password/reset")
 		auth.POST("/password/reset/confirm")
 	}
+
+	return s.server.ListenAndServe()
 }
 
 func (s *Server) ShutDown(ctx context.Context) error {
