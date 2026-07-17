@@ -93,3 +93,10 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		RefreshToken: refreshToken,
 	}, nil
 }
+
+func (s *AuthService) LogoutUser(ctx context.Context, id string) error {
+	if err := s.sessions.DeleteToken(ctx, id); err != nil {
+		return fmt.Errorf("s.sessions.DeleteToken: %w", err)
+	}
+	return nil
+}

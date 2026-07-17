@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
 	"BitCoinOffical/forgehost/auth-service/internal/api/response"
 	"BitCoinOffical/forgehost/auth-service/internal/domain"
 	"BitCoinOffical/forgehost/auth-service/internal/domain/dto"
@@ -75,9 +76,20 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	value, exists := c.Get(userContextKey)
-	if !exists {
-		response.Unauthorized(c, domain.ErrInvalidCredentials, "not found value by key", h.logger)
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		if errors.Is(err, domain.ErrValueNotFound) {
+			response.Unauthorized(c, err, "not found value by key", h.logger)
+			return
+		}
+		response.BadRequest(c, err, "incorrect type value", h.logger)
 		return
 	}
+
+	if err := h.service.LogoutUser(c.Request.Context(), id); err != nil {
+		response.InternalServerError(c, err, "user failed to logout", h.logger)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
