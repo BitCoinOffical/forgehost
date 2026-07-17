@@ -8,10 +8,25 @@ import (
 )
 
 type PostgresConfig struct {
+	DBUser     string
+	DBPassword string
+	DBHost     string
+	DBPort     string
+	DBName     string
 }
 
-func NewPool(ctx context.Context, cfg PostgresConfig) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, "")
+func NewPool(cfg *PostgresConfig) (*pgxpool.Pool, error) {
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		cfg.DBUser,
+		cfg.DBPassword,
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBName,
+	)
+
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, connString)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.New: %w", err)
 	}
@@ -21,4 +36,8 @@ func NewPool(ctx context.Context, cfg PostgresConfig) (*pgxpool.Pool, error) {
 	}
 
 	return pool, nil
+}
+
+func ClosePool(pool *pgxpool.Pool) {
+	pool.Close()
 }
