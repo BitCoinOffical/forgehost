@@ -18,12 +18,12 @@ const (
 )
 
 type AuthHandler struct {
-	logger  *zap.Logger
-	service *services.AuthService
+	logger   *zap.Logger
+	authsrvc *services.AuthService
 }
 
-func NewAuthHandler(logger *zap.Logger, service *services.AuthService) *AuthHandler {
-	return &AuthHandler{logger: logger, service: service}
+func NewAuthHandler(logger *zap.Logger, authsrvc *services.AuthService) *AuthHandler {
+	return &AuthHandler{logger: logger, authsrvc: authsrvc}
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -33,7 +33,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.service.LoginUser(c.Request.Context(), &req)
+	tokens, err := h.authsrvc.LoginUser(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrInvalidCredentials) {
 			response.Unauthorized(c, err, "invalid credentials", h.logger)
@@ -58,7 +58,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.service.RegisterUser(c.Request.Context(), &req)
+	tokens, err := h.authsrvc.RegisterUser(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
 			response.Conflict(c, err, "email already exists", h.logger)
@@ -86,10 +86,19 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.LogoutUser(c.Request.Context(), id); err != nil {
+	if err := h.authsrvc.LogoutUser(c.Request.Context(), id); err != nil {
 		response.InternalServerError(c, err, "user failed to logout", h.logger)
 		return
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
+	var req dto.TokensDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "failed to login", h.logger)
+		return
+	}
+
 }
