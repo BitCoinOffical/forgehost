@@ -5,6 +5,10 @@ type TokensDTO struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type GoogleAndroidUserDTO struct {
+	IdToken string `json:"id_token"`
+}
+
 type GoogleUserDTO struct {
 	Sub           string `json:"sub"`
 	Name          string `json:"name"`

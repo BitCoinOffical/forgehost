@@ -66,7 +66,7 @@ func main() {
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
-	srvs := handlers.NewServices(manager, rdb, pool)
+	srvs := handlers.NewServices(manager, rdb, pool, cfg.Google.ClientID)
 	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
 		RedirectURL:  cfg.Google.RedirectURL,
 		ClientID:     cfg.Google.ClientID,

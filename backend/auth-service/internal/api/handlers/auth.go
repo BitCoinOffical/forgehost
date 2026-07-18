@@ -34,7 +34,7 @@ func NewAuthHandler(logger *zap.Logger, authsrvc *services.AuthService, oauthCfg
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.UsersLoginDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		response.BadRequest(c, err, "failed to login", h.logger)
+		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req dto.UsersRegisterDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		response.BadRequest(c, err, "failed to register", h.logger)
+		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
@@ -179,14 +179,51 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
 	var req dto.TokensDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		response.BadRequest(c, err, "failed to login", h.logger)
+		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
 	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req)
 	if err != nil {
+		response.InternalServerError(c, err, "failed update token", h.logger)
 		return
 	}
 
 	c.JSON(http.StatusOK, tokens)
+}
+
+func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
+	var req dto.GoogleAndroidUserDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	tokens, err := h.authsrvc.GoogleLoginAndroid(c.Request.Context(), req)
+	if err != nil {
+		if errors.Is(err, domain.ErrInvalidGoogleToken) {
+			response.Unauthorized(c, err, "invalid google token", h.logger)
+			return
+		}
+		response.InternalServerError(c, err, "failed google android login", h.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, tokens)
+}
+
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+
+}
+func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
+
+}
+func (h *AuthHandler) UpdatePassword(c *gin.Context) {
+
+}
+func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
+
+}
+func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
+
 }

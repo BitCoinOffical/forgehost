@@ -16,10 +16,10 @@ type Services struct {
 	Service *services.AuthService
 }
 
-func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool) *Services {
+func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool, googleClientID string) *Services {
 	sessions := session.NewSession(rdb)
 	repo := repo.NewAuthRepo(pool)
-	service := services.NewAuthService(repo, manager, sessions)
+	service := services.NewAuthService(repo, manager, sessions, googleClientID)
 	return &Services{Service: service}
 }
 

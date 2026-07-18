@@ -46,7 +46,7 @@ func (s *Server) Run() error {
 		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Auth.Logout)
 		auth.POST("/refresh", s.h.Auth.UpdateAccessToken)
 
-		auth.POST("/login/google", s.h.Auth.GoogleLogin) //android
+		auth.POST("/login/google", s.h.Auth.GoogleLoginAndroid) //android
 
 		auth.GET("/login/google", s.h.Auth.GoogleLogin)             //web
 		auth.GET("/login/google/callback", s.h.Auth.GoogleCallback) //web

@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users(
     name VARCHAR NOT NULL,
     email VARCHAR NOT NULL UNIQUE,
     password_hash VARCHAR,
-    picture VARCHAR,
+    picture VARCHAR NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
