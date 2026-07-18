@@ -117,6 +117,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	code := c.Query("code")
 	if code == "" {
 		response.BadRequest(c, err, "empty query", h.logger)
+		return
 	}
 
 	token, err := h.oauthCfg.Exchange(c.Request.Context(), code)
@@ -135,6 +136,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		response.InternalServerError(c, err, "read body error", h.logger)
+		return
 	}
 
 	var req dto.GoogleUserDTO
