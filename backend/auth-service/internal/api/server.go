@@ -39,6 +39,7 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 
 func (s *Server) Run() error {
 	auth := s.engine.Group("/auth")
+	auth.Use(s.m.RateLimiter())
 	{
 		auth.POST("/register", s.h.Auth.Register)
 		auth.POST("/login", s.h.Auth.Login)

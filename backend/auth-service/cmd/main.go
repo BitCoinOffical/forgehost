@@ -46,6 +46,13 @@ func main() {
 		DBName:     cfg.Postgres.DBName,
 	})
 
+	rate, err := redisdb.NewRedis(&redisdb.RedisConfig{
+		RDBAddr: cfg.Redis.RDBRateAddr,
+		RDBPort: cfg.Redis.RDBRatePort,
+		RDBDB:   cfg.Redis.RDBLimiterDB,
+		RDBPass: cfg.Redis.RDBPass,
+	})
+
 	rdb, err := redisdb.NewRedis(&redisdb.RedisConfig{
 		RDBAddr: cfg.Redis.RDBSessionAddr,
 		RDBPort: cfg.Redis.RDBSessionPort,
@@ -58,7 +65,7 @@ func main() {
 	logger.Info("redis applied successfully")
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
-	m := middleware.NewAuthMiddleware(logger, manager)
+	m := middleware.NewMiddleware(rate, logger, manager)
 	srvs := handlers.NewServices(manager, rdb, pool)
 	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
 		RedirectURL:  cfg.Google.RedirectURL,

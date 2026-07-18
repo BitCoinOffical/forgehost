@@ -48,3 +48,9 @@ func Forbidden(c *gin.Context, err error, msg string, logger *zap.Logger) {
 		"error": err.Error(),
 	})
 }
+func ManyRequest(c *gin.Context, err error, msg string, logger *zap.Logger) {
+	logger.Info(msg, zap.Error(err), zap.String("path", c.FullPath()))
+	c.JSON(http.StatusTooManyRequests, gin.H{
+		"error": err.Error(),
+	})
+}
