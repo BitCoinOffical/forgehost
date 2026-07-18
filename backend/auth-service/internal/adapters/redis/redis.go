@@ -14,7 +14,7 @@ type RedisConfig struct {
 	RDBPass string
 }
 
-func NewRedis(cfg RedisConfig) (*redis.Client, error) {
+func NewRedis(cfg *RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", cfg.RDBAddr, cfg.RDBPort),
 		Password: cfg.RDBPass,
