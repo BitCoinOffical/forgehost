@@ -1,6 +1,8 @@
 package jwtpkg
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
@@ -10,7 +12,7 @@ import (
 )
 
 type Claims struct {
-	userID string
+	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -47,7 +49,7 @@ func (m *ManagerToken) ValidateToken(tokenString string) (*Claims, error) {
 
 func (m *ManagerToken) GenerateToken(userID uuid.UUID, ttl time.Duration) (string, error) {
 	claims := Claims{
-		userID: userID.String(),
+		UserID: userID.String(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -56,4 +58,14 @@ func (m *ManagerToken) GenerateToken(userID uuid.UUID, ttl time.Duration) (strin
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(m.SecretKey)
+}
+
+func GenerateSessionID() (string, error) {
+	b := make([]byte, 32)
+
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("rand.Read: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
