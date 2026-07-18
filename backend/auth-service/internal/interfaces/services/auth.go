@@ -128,6 +128,42 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDT
 	}, nil
 }
 
+func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (*models.Tokens, error) {
+	user := &models.User{
+		Name:    req.Name,
+		Email:   req.Email,
+		Picture: req.Picture,
+	}
+	oauth := &models.OAuthAccount{
+		Provider:       "google",
+		ProviderUserID: req.Sub,
+		GivenName:      req.GivenName,
+		FamilyName:     req.FamilyName,
+		EmailVerified:  req.EmailVerified,
+	}
+	id, err := s.repo.SaveGoogleUser(ctx, user, oauth)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
+	}
+	accessToken, err := s.tokens.GenerateToken(id, AccessTTL)
+	if err != nil {
+		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
+	}
+	refreshToken, err := s.tokens.GenerateToken(id, RefreshTTL)
+	if err != nil {
+		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
+	}
+
+	if err := s.sessions.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	}
+
+	return &models.Tokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
 func (s *AuthService) LogoutUser(ctx context.Context, id string) error {
 	if err := s.sessions.DeleteToken(ctx, id); err != nil {
 		return fmt.Errorf("s.sessions.DeleteToken: %w", err)

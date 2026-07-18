@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 const (
@@ -58,7 +60,16 @@ func main() {
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewAuthMiddleware(logger, manager)
 	srvs := handlers.NewServices(manager, rdb, pool)
-	handlrs := handlers.NewHandlers(logger, srvs)
+	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
+		RedirectURL:  cfg.Google.RedirectURL,
+		ClientID:     cfg.Google.ClientID,
+		ClientSecret: cfg.Google.ClientSecret,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+		},
+		Endpoint: google.Endpoint,
+	})
 	serv := api.NewServer(&cfg.App, m, handlrs)
 
 	go func() {

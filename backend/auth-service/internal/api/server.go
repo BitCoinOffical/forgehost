@@ -42,16 +42,18 @@ func (s *Server) Run() error {
 	{
 		auth.POST("/register", s.h.Auth.Register)
 		auth.POST("/login", s.h.Auth.Login)
-		auth.POST("/logout", s.h.Auth.Logout)
+		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Auth.Logout)
 		auth.POST("/refresh", s.h.Auth.UpdateAccessToken)
 
-		auth.GET("/login/google")
-		auth.GET("/login/google/callback")
+		auth.POST("/login/google", s.h.Auth.GoogleLogin) //android
 
-		auth.POST("/verify-email")
-		auth.POST("/verify-email/resend")
+		auth.GET("/login/google", s.h.Auth.GoogleLogin)             //web
+		auth.GET("/login/google/callback", s.h.Auth.GoogleCallback) //web
 
-		auth.PATCH("/password/update")
+		auth.POST("/verify-email", s.m.AuthMiddleware())
+		auth.POST("/verify-email/resend", s.m.AuthMiddleware())
+
+		auth.PATCH("/password/update", s.m.AuthMiddleware())
 		auth.POST("/password/reset")
 		auth.POST("/password/reset/confirm")
 	}

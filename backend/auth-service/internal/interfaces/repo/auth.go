@@ -52,3 +52,46 @@ func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, e
 
 	return id, nil
 }
+
+func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq *models.OAuthAccount) (uuid.UUID, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("r.pool.Begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var userID uuid.UUID
+	err = tx.QueryRow(ctx, "SELECT user_id FROM oauth_accounts WHERE provider = $1 AND provider_user_id = $2", oathReq.Provider, oathReq.ProviderUserID).Scan(&userID)
+	if err == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return uuid.Nil, fmt.Errorf("tx.Commit: %w", err)
+		}
+		return userID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, fmt.Errorf("tx.QueryRow: %w", err)
+	}
+
+	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email=$1`, req.Email).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture) VALUES ($1, $2, $3) RETURNING id`, req.Name, req.Email, req.Picture).Scan(&userID); err != nil {
+			return uuid.Nil, fmt.Errorf("tx.QueryRow: %w", err)
+		}
+	} else if err != nil {
+		return uuid.Nil, fmt.Errorf("check user by email: %w", err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO oauth_accounts 
+		(user_id, provider, provider_user_id, given_name, family_name, email_verified)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName, oathReq.EmailVerified); err != nil {
+		return uuid.Nil, fmt.Errorf("tx.Exec: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return uuid.Nil, fmt.Errorf("tx.Commit: %w", err)
+	}
+	return userID, nil
+}

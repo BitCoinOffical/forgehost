@@ -34,3 +34,17 @@ func Conflict(c *gin.Context, err error, msg string, logger *zap.Logger) {
 		"error": err.Error(),
 	})
 }
+
+func BadGateway(c *gin.Context, err error, msg string, logger *zap.Logger) {
+	logger.Error(msg, zap.Error(err), zap.String("patch", c.FullPath()))
+	c.JSON(http.StatusBadGateway, gin.H{
+		"error": err.Error(),
+	})
+}
+
+func Forbidden(c *gin.Context, err error, msg string, logger *zap.Logger) {
+	logger.Error(msg, zap.Error(err), zap.String("patch", c.FullPath()))
+	c.JSON(http.StatusForbidden, gin.H{
+		"error": err.Error(),
+	})
+}

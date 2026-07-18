@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 type Services struct {
@@ -26,7 +27,7 @@ type Handlers struct {
 	Auth *AuthHandler
 }
 
-func NewHandlers(logger *zap.Logger, srv *Services) *Handlers {
-	auth := NewAuthHandler(logger, srv.Service)
+func NewHandlers(logger *zap.Logger, srv *Services, cfg *oauth2.Config) *Handlers {
+	auth := NewAuthHandler(logger, srv.Service, cfg)
 	return &Handlers{Auth: auth}
 }
