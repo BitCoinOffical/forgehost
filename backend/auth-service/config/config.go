@@ -15,8 +15,15 @@ type Env string
 
 type Config struct {
 	Postgres PostgresConfig
+	Google   GoogleConfig
 	Redis    RedisConfig
 	App      AppConfig
+}
+
+type GoogleConfig struct {
+	ClientID     string `env:"GOOGLE_CLIENT_ID,required"`
+	ClientSecret string `env:"GOOGLE_CLIENT_SECRET,required"`
+	RedirectURL  string `env:"GOOGLE_REDIRECT_URL,required"`
 }
 
 type PostgresConfig struct {
@@ -49,6 +56,18 @@ func NewLoad() (*Config, error) {
 	var cfg Config
 
 	if err := env.Parse(&cfg.App); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Google); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Postgres); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Redis); err != nil {
 		return nil, err
 	}
 
