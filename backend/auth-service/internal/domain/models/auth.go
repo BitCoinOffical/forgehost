@@ -25,7 +25,7 @@ type OAuthAccount struct {
 	ID             uuid.UUID `db:"id"`
 	UserID         uuid.UUID `db:"user_id"`
 	Provider       string    `db:"provider"`
-	ProviderUserID string    `db:"provider_user_id"`
+	ProviderUserID string    `db:"provider_user_id"` //sub
 	GivenName      string    `db:"given_name"`
 	FamilyName     string    `db:"family_name"`
 	EmailVerified  bool      `db:"email_verified"`
