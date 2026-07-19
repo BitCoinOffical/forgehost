@@ -132,16 +132,16 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDT
 
 func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (*models.Tokens, error) {
 	user := &models.User{
-		Name:    req.Name,
-		Email:   req.Email,
-		Picture: req.Picture,
+		Name:          req.Name,
+		Email:         req.Email,
+		Picture:       req.Picture,
+		EmailVerified: req.EmailVerified,
 	}
 	oauth := &models.OAuthAccount{
 		Provider:       "google",
 		ProviderUserID: req.Sub,
 		GivenName:      req.GivenName,
 		FamilyName:     req.FamilyName,
-		EmailVerified:  req.EmailVerified,
 	}
 	id, err := s.repo.SaveGoogleUser(ctx, user, oauth)
 	if err != nil {
@@ -187,16 +187,16 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 	givenName, _ := payload.Claims["given_name"].(string)
 	familyName, _ := payload.Claims["family_name"].(string)
 	user := &models.User{
-		Name:    name,
-		Email:   email,
-		Picture: picture,
+		Name:          name,
+		Email:         email,
+		Picture:       picture,
+		EmailVerified: true,
 	}
 	oauth := &models.OAuthAccount{
 		Provider:       "google",
 		ProviderUserID: sub,
 		GivenName:      givenName,
 		FamilyName:     familyName,
-		EmailVerified:  true,
 	}
 
 	id, err := s.repo.SaveGoogleUser(ctx, user, oauth)

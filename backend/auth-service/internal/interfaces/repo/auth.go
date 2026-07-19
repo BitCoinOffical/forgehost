@@ -75,18 +75,22 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 
 	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email=$1`, req.Email).Scan(&userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture) VALUES ($1, $2, $3) RETURNING id`, req.Name, req.Email, req.Picture).Scan(&userID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture, email_verified) VALUES ($1, $2, $3, $4) RETURNING id`, req.Name, req.Email, req.Picture, req.EmailVerified).Scan(&userID); err != nil {
 			return uuid.Nil, fmt.Errorf("tx.QueryRow: %w", err)
 		}
 	} else if err != nil {
 		return uuid.Nil, fmt.Errorf("check user by email: %w", err)
+	} else {
+		if _, err := tx.Exec(ctx, `UPDATE users SET email_verified=true WHERE id=$1 AND email_verified=false`, userID); err != nil {
+			return uuid.Nil, fmt.Errorf("update email_verified: %w", err)
+		}
 	}
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO oauth_accounts 
-		(user_id, provider, provider_user_id, given_name, family_name, email_verified)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName, oathReq.EmailVerified); err != nil {
+		(user_id, provider, provider_user_id, given_name, family_name)
+		VALUES ($1, $2, $3, $4, $5)
+		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName); err != nil {
 		return uuid.Nil, fmt.Errorf("tx.Exec: %w", err)
 	}
 

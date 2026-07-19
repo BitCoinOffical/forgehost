@@ -12,13 +12,14 @@ type Tokens struct {
 }
 
 type User struct {
-	ID           uuid.UUID `db:"id"`
-	Name         string    `db:"name"`
-	Email        string    `db:"email"`
-	PasswordHash []byte    `db:"password_hash"`
-	Picture      string    `db:"picture"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
+	ID            uuid.UUID `db:"id"`
+	Name          string    `db:"name"`
+	Email         string    `db:"email"`
+	PasswordHash  []byte    `db:"password_hash"`
+	Picture       string    `db:"picture"`
+	EmailVerified bool      `db:"email_verified"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 type OAuthAccount struct {
@@ -28,7 +29,6 @@ type OAuthAccount struct {
 	ProviderUserID string    `db:"provider_user_id"` //sub
 	GivenName      string    `db:"given_name"`
 	FamilyName     string    `db:"family_name"`
-	EmailVerified  bool      `db:"email_verified"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users(
     email VARCHAR NOT NULL UNIQUE,
     password_hash VARCHAR,
     picture VARCHAR NOT NULL DEFAULT '',
+    email_verified BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -19,7 +20,6 @@ CREATE TABLE IF NOT EXISTS oauth_accounts(
     provider_user_id VARCHAR NOT NULL,
     given_name VARCHAR,
     family_name VARCHAR,
-    email_verified BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(provider, provider_user_id)
