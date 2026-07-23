@@ -65,7 +65,7 @@ func main() {
 	}
 	logger.Info("redis applied successfully")
 
-	googlesmtp.NewMailer(&googlesmtp.GoogleUserSMTP{
+	googlesmtp.NewGoogleSMTP(&googlesmtp.GoogleUserSMTP{
 		SMTPHost:     cfg.SMTP.SMTPHost,
 		SMTPPort:     cfg.SMTP.SMTPPort,
 		SMTPUsername: cfg.SMTP.SMTPUser,
