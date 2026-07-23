@@ -17,6 +17,7 @@ type Config struct {
 	Postgres PostgresConfig
 	Google   GoogleConfig
 	Redis    RedisConfig
+	SMTP     SMTPConfig
 	App      AppConfig
 }
 
@@ -46,6 +47,13 @@ type RedisConfig struct {
 	RDBPass string `env:"RDB_PASS,required"`
 }
 
+type SMTPConfig struct {
+	SMTPHost string `env:"SMTP_HOST,required"`
+	SMTPPort int    `env:"SMTP_PORT,required"`
+	SMTPUser string `env:"SMTP_USERNAME,required"`
+	SMTPPass string `env:"SMTP_PASSWORD,required"`
+}
+
 type AppConfig struct {
 	Secret     string `env:"JWT_SECRET,required"`
 	DebugLevel string `env:"DEBUG_LEVEL,required"`
@@ -64,6 +72,10 @@ func NewLoad() (*Config, error) {
 	}
 
 	if err := env.Parse(&cfg.Postgres); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.SMTP); err != nil {
 		return nil, err
 	}
 

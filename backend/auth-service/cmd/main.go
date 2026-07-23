@@ -4,6 +4,7 @@ import (
 	"BitCoinOffical/forgehost/auth-service/config"
 	postgresdb "BitCoinOffical/forgehost/auth-service/internal/adapters/postgres"
 	redisdb "BitCoinOffical/forgehost/auth-service/internal/adapters/redis"
+	googlesmtp "BitCoinOffical/forgehost/auth-service/internal/adapters/smtp"
 	"BitCoinOffical/forgehost/auth-service/internal/api"
 	"BitCoinOffical/forgehost/auth-service/internal/api/handlers"
 	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
@@ -63,6 +64,13 @@ func main() {
 		logger.Fatal("redis failed", zap.Error(err))
 	}
 	logger.Info("redis applied successfully")
+
+	googlesmtp.NewMailer(&googlesmtp.GoogleUserSMTP{
+		SMTPHost:     cfg.SMTP.SMTPHost,
+		SMTPPort:     cfg.SMTP.SMTPPort,
+		SMTPUsername: cfg.SMTP.SMTPUser,
+		SMTPPassword: cfg.Postgres.DBPassword,
+	})
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
