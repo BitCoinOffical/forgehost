@@ -11,6 +11,7 @@ import (
 
 const (
 	tokenKey = "refresh:"
+	codeKey  = "code:"
 )
 
 type Session struct {
@@ -44,4 +45,21 @@ func (s *Session) DeleteToken(ctx context.Context, id string) error {
 		return fmt.Errorf("s.rdb.Del: %w", err)
 	}
 	return nil
+}
+
+func (s *Session) SaveVerificationCode(ctx context.Context, value int, expiration time.Duration) error {
+	key := fmt.Sprintf("%s%d", codeKey, value)
+	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
+		return fmt.Errorf("c.rdb.Set: %w", err)
+	}
+	return nil
+}
+
+func (s *Session) GetVerificationCode(ctx context.Context, value int) (string, error) {
+	key := fmt.Sprintf("%s%d", codeKey, value)
+	val, err := s.rdb.Get(ctx, key).Result()
+	if err != nil {
+		return "", fmt.Errorf("s.rdb.Get: %w", err)
+	}
+	return val, nil
 }

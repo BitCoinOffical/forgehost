@@ -16,8 +16,8 @@ type Env string
 type Config struct {
 	Postgres PostgresConfig
 	Google   GoogleConfig
+	Resend   ResendConfig
 	Redis    RedisConfig
-	SMTP     SMTPConfig
 	App      AppConfig
 }
 
@@ -47,11 +47,8 @@ type RedisConfig struct {
 	RDBPass string `env:"RDB_PASS,required"`
 }
 
-type SMTPConfig struct {
-	SMTPHost string `env:"SMTP_HOST,required"`
-	SMTPPort int    `env:"SMTP_PORT,required"`
-	SMTPUser string `env:"SMTP_USERNAME,required"`
-	SMTPPass string `env:"SMTP_PASSWORD,required"`
+type ResendConfig struct {
+	ResendApiKey string `env:"RESEND_API_KEY,required"`
 }
 
 type AppConfig struct {
@@ -75,7 +72,7 @@ func NewLoad() (*Config, error) {
 		return nil, err
 	}
 
-	if err := env.Parse(&cfg.SMTP); err != nil {
+	if err := env.Parse(&cfg.Resend); err != nil {
 		return nil, err
 	}
 
