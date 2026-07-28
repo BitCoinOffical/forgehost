@@ -13,3 +13,6 @@ var ErrInvalidGoogleToken = errors.New("invalid google token")
 // middleware
 var ErrValueNotFound = errors.New("value for key not found")
 var ErrIncorrectType = errors.New("incorrect type")
+
+// worker
+var ErrLimitExceeded = errors.New("waiting limit exceeded")
