@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"embed"
 	"fmt"
 	"html/template"
 
@@ -9,7 +10,7 @@ import (
 )
 
 const (
-	resendFrom = "onboarding@resend.dev"
+	resendFrom = "ForgeHost <onboarding@resend.dev>"
 )
 
 type ResendConfig struct {
@@ -21,7 +22,7 @@ type ResendClient struct {
 }
 
 type Data struct {
-	Code int
+	Code string
 }
 
 func NewResendSender(cfg *ResendConfig) *ResendClient {
@@ -29,8 +30,12 @@ func NewResendSender(cfg *ResendConfig) *ResendClient {
 	return &ResendClient{client: client}
 }
 
-func (g *ResendClient) SendVerificationEmail(to []string, code int) (string, error) {
-	tmpl, err := template.ParseFiles("template/code.html")
+//go:embed template/code.html
+var templateFS embed.FS
+
+func (g *ResendClient) SendVerificationEmail(to []string, code string) (string, error) {
+
+	tmpl, err := template.ParseFS(templateFS, "template/code.html")
 	if err != nil {
 		return "", fmt.Errorf("template.ParseFiles: %w", err)
 	}
