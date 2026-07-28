@@ -215,6 +215,15 @@ func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
 }
 
 func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	var req dto.VerifyEmailDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+	if err := h.authsrvc.VerifyEmail(c.Request.Context(), req.Email); err != nil {
+		response.InternalServerError(c, err, "failed verificate email", h.logger)
+		return
+	}
 
 }
 func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
@@ -223,7 +232,7 @@ func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 
 }
-func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
+func (h *AuthHandler) PasswordReset(c *gin.Context) {
 
 }
 func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
