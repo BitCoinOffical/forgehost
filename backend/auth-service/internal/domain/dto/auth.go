@@ -1,5 +1,9 @@
 package dto
 
+type VerifyEmailDTO struct {
+	Email string `json:"email"`
+}
+
 type TokensDTO struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
