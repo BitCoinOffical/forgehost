@@ -30,7 +30,7 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 		h:      h,
 		engine: engine,
 		server: &http.Server{
-			Addr:        cfg.Port,
+			Addr:        ":" + cfg.Port,
 			Handler:     engine,
 			ReadTimeout: timeoutSecond * time.Second,
 		},
@@ -38,7 +38,8 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 }
 
 func (s *Server) Run() error {
-	auth := s.engine.Group("/auth")
+	api := s.engine.Group("/api/v1")
+	auth := api.Group("/auth")
 	auth.Use(s.m.RateLimiter())
 	{
 		auth.POST("/register", s.h.Auth.Register)
@@ -51,9 +52,12 @@ func (s *Server) Run() error {
 		auth.GET("/login/google", s.h.Auth.GoogleLogin)             //web
 		auth.GET("/login/google/callback", s.h.Auth.GoogleCallback) //web
 
-		auth.PATCH("/password/update", s.m.AuthMiddleware())
-		auth.POST("/password/reset")
-		auth.POST("/password/reset/confirm")
+		auth.POST("/verify-email", s.m.AuthMiddleware(), s.h.Auth.VerifyEmail)
+		auth.POST("/verify-email/resend", s.m.AuthMiddleware(), s.h.Auth.ResendVerifyEmail)
+
+		auth.PATCH("/password/update", s.m.AuthMiddleware(), s.h.Auth.UpdatePassword)
+		auth.POST("/password/reset", s.h.Auth.PasswordReset)
+		auth.POST("/password/reset/confirm", s.h.Auth.ConfirmPasswordReset)
 	}
 
 	return s.server.ListenAndServe()
