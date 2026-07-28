@@ -4,6 +4,7 @@ import (
 	"BitCoinOffical/forgehost/auth-service/internal/api/response"
 	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"net/http"
+	"strings"
 
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,7 @@ import (
 
 const (
 	headerAuthorization = "Authorization"
-	bearerSchema        = "Bearer Token"
+	bearerSchema        = "Bearer"
 	userContextKey      = "user_claims"
 	prefix              = "rate_limiter"
 )
@@ -38,8 +39,8 @@ func NewMiddleware(rdb *redis.Client, logger *zap.Logger, tokens *jwtpkg.Manager
 
 func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader(bearerSchema)
-		if token == "" {
+		token := c.GetHeader(headerAuthorization)
+		if token == "" || !strings.HasPrefix(token, bearerSchema+" ") {
 			m.logger.Warn(errEmptyToken, zap.String("path", c.Request.URL.Path))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": errEmptyToken,
@@ -47,7 +48,9 @@ func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, err := m.tokens.ValidateToken(token)
+		tokenString := strings.TrimPrefix(token, bearerSchema+" ")
+
+		claims, err := m.tokens.ValidateToken(tokenString)
 		if err != nil {
 			m.logger.Warn(errInvalidToken, zap.String("path", c.Request.URL.Path), zap.Error(err))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
