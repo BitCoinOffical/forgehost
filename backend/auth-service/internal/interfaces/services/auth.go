@@ -4,32 +4,40 @@ import (
 	"BitCoinOffical/forgehost/auth-service/internal/domain"
 	"BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	rabbitqueue "BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
 	"BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
 	"BitCoinOffical/forgehost/auth-service/internal/interfaces/session"
 	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"context"
+	"encoding/json"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	AccessTTL  = 15 * time.Minute
-	RefreshTTL = (24 * 30) * time.Hour
+	AccessTTL       = 15 * time.Minute
+	RefreshTTL      = (24 * 30) * time.Hour
+	VerificationTTL = 5 * time.Minute
 )
 
 type AuthService struct {
-	tokens         *jwtpkg.ManagerToken
-	repo           *repo.AuthRepo
-	sessions       *session.Session
-	googleClientID string
+	logger            *zap.Logger
+	tokens            *jwtpkg.ManagerToken
+	repo              *repo.AuthRepo
+	queue             *rabbitqueue.RabbitQueue
+	sessions          *session.Session
+	WebgoogleClientID string
 }
 
-func NewAuthService(repo *repo.AuthRepo, tokens *jwtpkg.ManagerToken, sessions *session.Session, googleClientID string) *AuthService {
-	return &AuthService{repo: repo, tokens: tokens, sessions: sessions, googleClientID: googleClientID}
+func NewAuthService(repo *repo.AuthRepo, tokens *jwtpkg.ManagerToken, sessions *session.Session, WebgoogleClientID string, queue *rabbitqueue.RabbitQueue, logger *zap.Logger) *AuthService {
+	return &AuthService{repo: repo, tokens: tokens, sessions: sessions, WebgoogleClientID: WebgoogleClientID, queue: queue, logger: logger}
 }
 
 func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
@@ -55,6 +63,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
 	}
 
+	s.logger.Debug("successful user login", zap.Any("user_id", user.ID))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -91,6 +100,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
 	}
 
+	s.logger.Debug("successful user registration", zap.Any("user_id", id))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -124,6 +134,7 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDT
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
+	s.logger.Debug("successful token access", zap.Any("user_id", user.ID))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -132,9 +143,9 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDT
 
 func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (*models.Tokens, error) {
 	user := &models.User{
-		Name:          req.Name,
+		Name:          &req.Name,
 		Email:         req.Email,
-		Picture:       req.Picture,
+		Picture:       &req.Picture,
 		EmailVerified: req.EmailVerified,
 	}
 	oauth := &models.OAuthAccount{
@@ -160,14 +171,16 @@ func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO
 		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
 	}
 
+	s.logger.Debug("successful google callback", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "web"))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
 }
 
+// android
 func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndroidUserDTO) (*models.Tokens, error) {
-	payload, err := idtoken.Validate(ctx, req.IdToken, s.googleClientID)
+	payload, err := idtoken.Validate(ctx, req.IdToken, s.WebgoogleClientID) //android
 	if err != nil {
 		return nil, fmt.Errorf("idtoken.Validate: %w error: %v", domain.ErrInvalidGoogleToken, err)
 	}
@@ -187,9 +200,9 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 	givenName, _ := payload.Claims["given_name"].(string)
 	familyName, _ := payload.Claims["family_name"].(string)
 	user := &models.User{
-		Name:          name,
+		Name:          &name,
 		Email:         email,
-		Picture:       picture,
+		Picture:       &picture,
 		EmailVerified: true,
 	}
 	oauth := &models.OAuthAccount{
@@ -217,6 +230,7 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
 	}
 
+	s.logger.Debug("successful google callback for android", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "android"))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -227,5 +241,42 @@ func (s *AuthService) LogoutUser(ctx context.Context, id string) error {
 	if err := s.sessions.DeleteToken(ctx, id); err != nil {
 		return fmt.Errorf("s.sessions.DeleteToken: %w", err)
 	}
+	s.logger.Debug("user exited", zap.Any("user_id", id))
+	return nil
+}
+
+func (s *AuthService) VerifyEmail(ctx context.Context, email string) error {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("s.repo.GetUserByEmail: %w", err)
+	}
+
+	code := rand.Intn(900000) + 100000
+	if err := s.sessions.SaveVerificationCode(ctx, code, VerificationTTL); err != nil {
+		return fmt.Errorf("s.sessions.SaveVerificationCode: %w", err)
+	}
+
+	codeStr := strconv.Itoa(code)
+	body := models.RabbitQueue{
+		UserID: user.ID.String(),
+		Code:   codeStr,
+		Email:  email,
+
+		DispatchDate: time.Now().Add(VerificationTTL),
+	}
+
+	b, err := json.Marshal(&body)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	qctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.queue.AddQueue(qctx, b); err != nil {
+		return fmt.Errorf("s.queue.AddQueue: %w", err)
+	}
+
+	s.logger.Debug("code send", zap.Any("user_id", user.ID))
 	return nil
 }
