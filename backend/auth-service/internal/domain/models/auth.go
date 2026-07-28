@@ -13,10 +13,10 @@ type Tokens struct {
 
 type User struct {
 	ID            uuid.UUID `db:"id"`
-	Name          string    `db:"name"`
+	Name          *string   `db:"name"`
 	Email         string    `db:"email"`
 	PasswordHash  []byte    `db:"password_hash"`
-	Picture       string    `db:"picture"`
+	Picture       *string   `db:"picture"`
 	EmailVerified bool      `db:"email_verified"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
