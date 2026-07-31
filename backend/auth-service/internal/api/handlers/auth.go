@@ -63,7 +63,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.RegisterUser(c.Request.Context(), &req)
+	key, err := h.authsrvc.RegisterUser(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrEmailAlreadyExists) {
 			response.Conflict(c, err, "email already exists", h.logger)
@@ -73,11 +73,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, tokens)
+	c.JSON(http.StatusCreated, key)
 }
 
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
-	oauthState, err := jwtpkg.GenerateSessionID()
+	oauthState, err := jwtpkg.GenerateRandomString()
 	if err != nil {
 		response.InternalServerError(c, err, "failed generate session id", h.logger)
 		return
@@ -185,8 +185,12 @@ func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req)
+	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.Unauthorized(c, err, "not found token", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed update token", h.logger)
 		return
 	}
@@ -220,14 +224,32 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
-	if err := h.authsrvc.VerifyEmail(c.Request.Context(), req.Email); err != nil {
+	h.logger.Debug("received data", zap.Any("dto", req))
+
+	tokens, err := h.authsrvc.VerifyEmail(c.Request.Context(), &req)
+	if err != nil {
 		response.InternalServerError(c, err, "failed verificate email", h.logger)
 		return
 	}
 
+	c.JSON(http.StatusOK, tokens)
 }
 func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
+	var req dto.VerifyEmailDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
 
+	if err := h.authsrvc.ResendVerifyEmail(c.Request.Context(), &req); err != nil {
+		if errors.Is(err, domain.ErrToManyRequest) {
+			response.ManyRequest(c, err, "too many attempts", h.logger)
+		}
+		response.InternalServerError(c, err, "failed update verify email", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 

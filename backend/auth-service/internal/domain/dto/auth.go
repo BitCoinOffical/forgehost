@@ -1,7 +1,13 @@
 package dto
 
 type VerifyEmailDTO struct {
-	Email string `json:"email"`
+	Email      string `json:"email"`
+	PendingKey string `json:"pending_key"`
+	Code       string `json:"code"`
+}
+
+type PendingKeyDTO struct {
+	PendingKey string `json:"pending_key"`
 }
 
 type TokensDTO struct {

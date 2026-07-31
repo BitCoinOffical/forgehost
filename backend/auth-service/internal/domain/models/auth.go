@@ -6,9 +6,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type VerifyEmail struct {
+	PendingKey string
+	Email      string
+	Code       string
+}
+
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string
+}
+
+type UserStored struct {
+	Email        string `redis:"email"`
+	PasswordHash []byte `redis:"password_hash"`
 }
 
 type User struct {
