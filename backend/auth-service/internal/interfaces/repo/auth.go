@@ -24,9 +24,9 @@ func NewAuthRepo(pool *pgxpool.Pool) *AuthRepo {
 func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 
-	sql := `SELECT id, password_hash FROM users WHERE email = $1`
+	sql := `SELECT id, email_verified, password_hash FROM users WHERE email = $1`
 
-	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.PasswordHash)
+	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
@@ -38,7 +38,7 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 }
 
 func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, error) {
-	sql := `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`
+	sql := `INSERT INTO users (email, password_hash, email_verified) VALUES ($1, $2, true) RETURNING id`
 
 	var id uuid.UUID
 
@@ -98,12 +98,4 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 		return uuid.Nil, fmt.Errorf("tx.Commit: %w", err)
 	}
 	return userID, nil
-}
-
-func (r *AuthRepo) UpdateVerifyEmail(ctx context.Context, id, email string) error {
-	sql := `UPDATE users SET email_verified=true WHERE id=$1 AND email=$2`
-	if _, err := r.pool.Exec(ctx, sql, id, email); err != nil {
-		return fmt.Errorf("update email_verified: %w", err)
-	}
-	return nil
 }
