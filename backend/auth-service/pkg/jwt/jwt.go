@@ -12,7 +12,8 @@ import (
 )
 
 type Claims struct {
-	UserID string `json:"user_id"`
+	UserID     string `json:"user_id"`
+	IsVerified bool   `json:"is_verified"`
 	jwt.RegisteredClaims
 }
 
@@ -44,12 +45,17 @@ func (m *ManagerToken) ValidateToken(tokenString string) (*Claims, error) {
 		return nil, fmt.Errorf("invalid token: %w", jwt.ErrTokenInvalidClaims)
 	}
 
+	if !claims.IsVerified {
+		return nil, fmt.Errorf("email is not verify: %w", jwt.ErrTokenInvalidClaims)
+	}
+
 	return claims, nil
 }
 
-func (m *ManagerToken) GenerateToken(userID uuid.UUID, ttl time.Duration) (string, error) {
+func (m *ManagerToken) GenerateToken(userID uuid.UUID, IsVerified bool, ttl time.Duration) (string, error) {
 	claims := Claims{
-		UserID: userID.String(),
+		UserID:     userID.String(),
+		IsVerified: IsVerified,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -60,7 +66,7 @@ func (m *ManagerToken) GenerateToken(userID uuid.UUID, ttl time.Duration) (strin
 	return token.SignedString(m.SecretKey)
 }
 
-func GenerateSessionID() (string, error) {
+func GenerateRandomString() (string, error) {
 	b := make([]byte, 32)
 
 	_, err := rand.Read(b)
