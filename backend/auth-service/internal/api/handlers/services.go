@@ -4,7 +4,7 @@ import (
 	rabbitqueue "BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
 	"BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
 	"BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/session"
+	"BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
 	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,9 +20,9 @@ type Services struct {
 
 func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool, WebGoogleClientID string, conn *amqp091.Connection, logger *zap.Logger) *Services {
 	queue := rabbitqueue.NewQueue(conn)
-	sessions := session.NewSession(rdb)
+	store := store.NewRedisStore(rdb)
 	repo := repo.NewAuthRepo(pool)
-	service := services.NewAuthService(repo, manager, sessions, WebGoogleClientID, queue, logger)
+	service := services.NewAuthService(repo, manager, store, WebGoogleClientID, queue, logger)
 	return &Services{Service: service}
 }
 
