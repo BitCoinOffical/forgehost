@@ -99,3 +99,11 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 	}
 	return userID, nil
 }
+
+func (r *AuthRepo) UpdateVerifyEmail(ctx context.Context, id, email string) error {
+	sql := `UPDATE users SET email_verified=true WHERE id=$1 AND email=$2`
+	if _, err := r.pool.Exec(ctx, sql, id, email); err != nil {
+		return fmt.Errorf("update email_verified: %w", err)
+	}
+	return nil
+}

@@ -30,8 +30,8 @@ func (s *Session) SaveToken(ctx context.Context, id uuid.UUID, value string, Ref
 	return nil
 }
 
-func (s *Session) GetToken(ctx context.Context, id string) (string, error) {
-	key := fmt.Sprintf("%s%s", tokenKey, id)
+func (s *Session) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
+	key := fmt.Sprintf("%s%s", tokenKey, id.String())
 	value, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return "", fmt.Errorf("s.rdb.Get: %w", err)
@@ -39,24 +39,24 @@ func (s *Session) GetToken(ctx context.Context, id string) (string, error) {
 	return value, nil
 }
 
-func (s *Session) DeleteToken(ctx context.Context, id string) error {
-	key := fmt.Sprintf("%s%s", tokenKey, id)
+func (s *Session) DeleteToken(ctx context.Context, id uuid.UUID) error {
+	key := fmt.Sprintf("%s%s", tokenKey, id.String())
 	if err := s.rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Del: %w", err)
 	}
 	return nil
 }
 
-func (s *Session) SaveVerificationCode(ctx context.Context, value int, expiration time.Duration) error {
-	key := fmt.Sprintf("%s%d", codeKey, value)
+func (s *Session) SaveVerificationCode(ctx context.Context, id uuid.UUID, value int, expiration time.Duration) error {
+	key := fmt.Sprintf("%s%s", codeKey, id.String())
 	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
 	}
 	return nil
 }
 
-func (s *Session) GetVerificationCode(ctx context.Context, value int) (string, error) {
-	key := fmt.Sprintf("%s%d", codeKey, value)
+func (s *Session) GetVerificationCode(ctx context.Context, id uuid.UUID) (string, error) {
+	key := fmt.Sprintf("%s%s", codeKey, id.String())
 	val, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		return "", fmt.Errorf("s.rdb.Get: %w", err)

@@ -6,6 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type VerifyEmail struct {
+	Email string
+	Code  string
+}
+
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string

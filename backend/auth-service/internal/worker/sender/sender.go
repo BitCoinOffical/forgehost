@@ -75,7 +75,6 @@ func (w *Worker) WorkerPool(worker int) <-chan error {
 				if err := consumer.CloseConsumerChannel(); err != nil {
 					errs <- fmt.Errorf("consumer.CloseConsumerChannel: %w worker number %d", err, num+1)
 				}
-				break
 			}
 		})
 	}

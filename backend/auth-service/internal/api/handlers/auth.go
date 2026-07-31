@@ -185,7 +185,7 @@ func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req)
+	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed update token", h.logger)
 		return
@@ -215,19 +215,55 @@ func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
 }
 
 func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		if errors.Is(err, domain.ErrValueNotFound) {
+			response.Unauthorized(c, err, "not found value by key", h.logger)
+			return
+		}
+		response.BadRequest(c, err, "incorrect type value", h.logger)
+		return
+	}
+
 	var req dto.VerifyEmailDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
-	if err := h.authsrvc.VerifyEmail(c.Request.Context(), req.Email); err != nil {
+
+	if err := h.authsrvc.VerifyEmail(c.Request.Context(), &req, id); err != nil {
 		response.InternalServerError(c, err, "failed verificate email", h.logger)
 		return
 	}
 
+	c.Status(http.StatusOK)
 }
 func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		if errors.Is(err, domain.ErrValueNotFound) {
+			response.Unauthorized(c, err, "not found value by key", h.logger)
+			return
+		}
+		response.BadRequest(c, err, "incorrect type value", h.logger)
+		return
+	}
 
+	var req dto.VerifyEmailDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	if err := h.authsrvc.VerifyEmail(c.Request.Context(), &req, id); err != nil {
+		if errors.Is(err, domain.ErrInvalidCode) {
+			response.BadRequest(c, err, "codes is not equal", h.logger)
+		}
+		response.InternalServerError(c, err, "failed update verify email", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 

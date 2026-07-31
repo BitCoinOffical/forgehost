@@ -9,6 +9,7 @@ import (
 	"BitCoinOffical/forgehost/auth-service/internal/interfaces/session"
 	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -107,7 +108,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 	}, nil
 }
 
-func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDTO) (*models.Tokens, error) {
+func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens *dto.TokensDTO) (*models.Tokens, error) {
 	refreshToken := tokens.RefreshToken
 
 	user, err := s.tokens.ValidateToken(refreshToken)
@@ -115,7 +116,12 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens dto.TokensDT
 		return nil, fmt.Errorf("s.tokens.ValidateToken: %w", err)
 	}
 
-	savedToken, err := s.sessions.GetToken(ctx, user.ID)
+	id, err := uuid.Parse(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("uuid.Parse: %w", err)
+	}
+
+	savedToken, err := s.sessions.GetToken(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("s.sessions.GetToken: %w", err)
 	}
@@ -237,7 +243,12 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 	}, nil
 }
 
-func (s *AuthService) LogoutUser(ctx context.Context, id string) error {
+func (s *AuthService) LogoutUser(ctx context.Context, userID string) error {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("uuid.Parse: %w", err)
+	}
+
 	if err := s.sessions.DeleteToken(ctx, id); err != nil {
 		return fmt.Errorf("s.sessions.DeleteToken: %w", err)
 	}
@@ -245,22 +256,26 @@ func (s *AuthService) LogoutUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *AuthService) VerifyEmail(ctx context.Context, email string) error {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+func (s *AuthService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO, userID string) error {
+	verify := models.VerifyEmail{
+		Email: req.Email,
+	}
+
+	id, err := uuid.Parse(userID)
 	if err != nil {
-		return fmt.Errorf("s.repo.GetUserByEmail: %w", err)
+		return fmt.Errorf("uuid.Parse: %w", err)
 	}
 
 	code := rand.Intn(900000) + 100000
-	if err := s.sessions.SaveVerificationCode(ctx, code, VerificationTTL); err != nil {
+	if err := s.sessions.SaveVerificationCode(ctx, id, code, VerificationTTL); err != nil {
 		return fmt.Errorf("s.sessions.SaveVerificationCode: %w", err)
 	}
 
 	codeStr := strconv.Itoa(code)
 	body := models.RabbitQueue{
-		UserID: user.ID.String(),
+		UserID: userID,
 		Code:   codeStr,
-		Email:  email,
+		Email:  verify.Email,
 
 		DispatchDate: time.Now().Add(VerificationTTL),
 	}
@@ -277,6 +292,34 @@ func (s *AuthService) VerifyEmail(ctx context.Context, email string) error {
 		return fmt.Errorf("s.queue.AddQueue: %w", err)
 	}
 
-	s.logger.Debug("code send", zap.Any("user_id", user.ID))
+	s.logger.Debug("code send", zap.Any("user_id", userID))
+	return nil
+}
+
+func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO, userID string) error {
+	verify := models.VerifyEmail{
+		Email: req.Email,
+		Code:  req.Code,
+	}
+
+	id, err := uuid.Parse(req.Code)
+	if err != nil {
+		return fmt.Errorf("uuid.Parse: %w", err)
+	}
+
+	code, err := s.sessions.GetVerificationCode(ctx, id)
+	if err != nil {
+		return fmt.Errorf("s.sessions.GetVerificationCode: %w", err)
+	}
+
+	if subtle.ConstantTimeCompare([]byte(verify.Email), []byte(code)) != 1 {
+		return fmt.Errorf("subtle.ConstantTimeCompare: %w", domain.ErrInvalidCode)
+	}
+
+	if err := s.repo.UpdateVerifyEmail(ctx, userID, verify.Email); err != nil {
+		return fmt.Errorf("s.repo.UpdateVerifyEmail: %w", err)
+	}
+
+	s.logger.Debug("update email verified", zap.Any("user_id", userID))
 	return nil
 }
