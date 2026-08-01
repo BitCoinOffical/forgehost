@@ -36,12 +36,35 @@ type AuthService struct {
 	tokens            *jwtpkg.ManagerToken
 	repo              *repo.AuthRepo
 	queue             *rabbitqueue.RabbitQueue
-	store             *store.RedisStore
+	codeStore         *store.CodeStore
+	resendStore       *store.ResendStore
+	sessionStore      *store.SessionStore
+	userStore         *store.UserStore
 	WebgoogleClientID string
 }
 
-func NewAuthService(repo *repo.AuthRepo, tokens *jwtpkg.ManagerToken, store *store.RedisStore, WebgoogleClientID string, queue *rabbitqueue.RabbitQueue, logger *zap.Logger) *AuthService {
-	return &AuthService{repo: repo, tokens: tokens, store: store, WebgoogleClientID: WebgoogleClientID, queue: queue, logger: logger}
+func NewAuthService(
+	repo *repo.AuthRepo,
+	tokens *jwtpkg.ManagerToken,
+	codeStore *store.CodeStore,
+	resendStore *store.ResendStore,
+	sessionStore *store.SessionStore,
+	userStore *store.UserStore,
+	WebgoogleClientID string,
+	queue *rabbitqueue.RabbitQueue,
+	logger *zap.Logger,
+) *AuthService {
+	return &AuthService{
+		repo:              repo,
+		tokens:            tokens,
+		codeStore:         codeStore,
+		resendStore:       resendStore,
+		sessionStore:      sessionStore,
+		userStore:         userStore,
+		WebgoogleClientID: WebgoogleClientID,
+		queue:             queue,
+		logger:            logger,
+	}
 }
 
 func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
@@ -63,8 +86,8 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.store.SaveToken(ctx, user.ID, refreshToken, RefreshTTL); err != nil {
-		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	if err := s.sessionStore.SaveToken(ctx, user.ID, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
 	s.logger.Debug("successful user login", zap.Any("user_id", user.ID))
@@ -90,8 +113,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		return nil, fmt.Errorf("jwtpkg.GenerateRandomString: %w", err)
 	}
 
-	if err := s.store.SaveUser(ctx, randStr, &user); err != nil {
-		return nil, fmt.Errorf("s.store.SaveUser: %w", err)
+	if err := s.userStore.SaveUser(ctx, randStr, &user); err != nil {
+		return nil, fmt.Errorf("s.userStore.SaveUser: %w", err)
 	}
 
 	verify := models.VerifyEmail{
@@ -99,8 +122,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 	}
 
 	code := rand.Intn(900000) + 100000
-	if err := s.store.SaveVerificationCode(ctx, randStr, code, VerificationTTL); err != nil {
-		return nil, fmt.Errorf("s.store.SaveVerificationCode: %w", err)
+	if err := s.codeStore.SaveVerificationCode(ctx, randStr, code, VerificationTTL); err != nil {
+		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
 	codeStr := strconv.Itoa(code)
@@ -142,9 +165,9 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens *dto.TokensD
 		return nil, fmt.Errorf("uuid.Parse: %w", err)
 	}
 
-	savedToken, err := s.store.GetToken(ctx, id)
+	savedToken, err := s.sessionStore.GetToken(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("s.store.GetToken: %w", err)
+		return nil, fmt.Errorf("s.sessionStore.GetToken: %w", err)
 	}
 
 	if savedToken != refreshToken {
@@ -189,8 +212,8 @@ func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.store.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
-		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
 	s.logger.Debug("successful google callback", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "web"))
@@ -248,8 +271,8 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.store.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
-		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
 	s.logger.Debug("successful google callback for android", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "android"))
@@ -265,8 +288,8 @@ func (s *AuthService) LogoutUser(ctx context.Context, userID string) error {
 		return fmt.Errorf("uuid.Parse: %w", err)
 	}
 
-	if err := s.store.DeleteToken(ctx, id); err != nil {
-		return fmt.Errorf("s.store.DeleteToken: %w", err)
+	if err := s.sessionStore.DeleteToken(ctx, id); err != nil {
+		return fmt.Errorf("s.sessionStore.DeleteToken: %w", err)
 	}
 	s.logger.Debug("user exited", zap.Any("user_id", id))
 	return nil
@@ -281,18 +304,18 @@ func (s *AuthService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO) 
 		Code:       req.Code,
 	}
 
-	rcode, err := s.store.GetVerificationCode(ctx, verify.PendingKey)
+	rcode, err := s.codeStore.GetVerificationCode(ctx, verify.PendingKey)
 	if err != nil {
-		return nil, fmt.Errorf("s.store.GetVerificationCode: %w", err)
+		return nil, fmt.Errorf("s.codeStore.GetVerificationCode: %w", err)
 	}
 
 	if subtle.ConstantTimeCompare([]byte(verify.Code), []byte(rcode)) != 1 {
 		return nil, fmt.Errorf("subtle.ConstantTimeCompare: %w", domain.ErrInvalidCode)
 	}
 
-	userStore, err := s.store.GetUser(ctx, verify.PendingKey)
+	userStore, err := s.userStore.GetUser(ctx, verify.PendingKey)
 	if err != nil {
-		return nil, fmt.Errorf("s.store.GetUser: %w", err)
+		return nil, fmt.Errorf("s.userStore.GetUser: %w", err)
 	}
 
 	user := models.User{
@@ -315,8 +338,8 @@ func (s *AuthService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO) 
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.store.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
-		return nil, fmt.Errorf("s.session.SaveToken: %w", err)
+	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
 	s.logger.Debug("successful user verify email", zap.Any("user_id", id))
@@ -332,20 +355,20 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 		Email:      req.Email,
 	}
 
-	_, err := s.store.ResendLimitCheck(ctx, verify.Email)
+	_, err := s.resendStore.ResendLimitCheck(ctx, verify.Email)
 	if err == nil {
-		return fmt.Errorf("s.store.ResendLimitCheck: %w", domain.ErrToManyRequest)
+		return fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
 	} else if !errors.Is(err, domain.ErrNotFound) {
-		return fmt.Errorf("s.store.ResendLimitCheck: %w", err)
+		return fmt.Errorf("s.resendStore.ResendLimitCheck: %w", err)
 	}
 
-	if err := s.store.ResendLimitAdd(ctx, verify.Email); err != nil {
-		return fmt.Errorf("s.store.SaveVerificationCode: %w", err)
+	if err := s.resendStore.ResendLimitAdd(ctx, verify.Email); err != nil {
+		return fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
 	}
 
 	code := rand.Intn(900000) + 100000
-	if err := s.store.SaveVerificationCode(ctx, verify.PendingKey, code, VerificationTTL); err != nil {
-		return fmt.Errorf("s.store.SaveVerificationCode: %w", err)
+	if err := s.codeStore.SaveVerificationCode(ctx, verify.PendingKey, code, VerificationTTL); err != nil {
+		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
 	codeStr := strconv.Itoa(code)
@@ -369,5 +392,42 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 	}
 
 	logger.Info("verification code resent")
+	return nil
+}
+
+func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordDTO, userID string) error {
+	if req.NewPassword != req.NewPasswordRetry {
+		return domain.ErrPasswordMismatch
+	}
+
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return fmt.Errorf("uuid.Parse: %w", err)
+	}
+
+	newPass, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
+	}
+
+	userPass := models.UserPassword{
+		ID:          id,
+		OldPassword: []byte(req.OldPassword),
+		NewPassword: newPass,
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userPass.ID)
+	if err != nil {
+		return fmt.Errorf("s.repo.GetUserByID: %w", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword(userPass.OldPassword, user.PasswordHash); err != nil {
+		return fmt.Errorf("bcrypt.CompareHashAndPassword: %w", domain.ErrInvalidCredentials)
+	}
+
+	if err := s.repo.UpdateUserPassword(ctx, &userPass, user.Email); err != nil {
+		return fmt.Errorf("s.repo.UpdateUserPassword: %w", err)
+	}
+
 	return nil
 }
