@@ -13,9 +13,18 @@ import (
 
 const (
 	registerUserTTL = 24 * time.Hour
+	pendingKey      = "pending_key:"
 )
 
-func (s *RedisStore) SaveUser(ctx context.Context, randStr string, user *models.UserStored) error {
+type UserStore struct {
+	rdb *redis.Client
+}
+
+func NewUserStore(rdb *redis.Client) *UserStore {
+	return &UserStore{rdb: rdb}
+}
+
+func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.UserStored) error {
 	key := fmt.Sprintf("%s%s", pendingKey, randStr)
 	pipe := s.rdb.Pipeline()
 	if err := pipe.HSet(ctx, key, user).Err(); err != nil {
@@ -29,7 +38,7 @@ func (s *RedisStore) SaveUser(ctx context.Context, randStr string, user *models.
 	return nil
 }
 
-func (s *RedisStore) GetUser(ctx context.Context, randStr string) (*models.UserStored, error) {
+func (s *UserStore) GetUser(ctx context.Context, randStr string) (*models.UserStored, error) {
 	key := fmt.Sprintf("%s%s", pendingKey, randStr)
 	var user models.UserStored
 	err := s.rdb.HGetAll(ctx, key).Scan(&user)

@@ -20,9 +20,14 @@ type Services struct {
 
 func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool, WebGoogleClientID string, conn *amqp091.Connection, logger *zap.Logger) *Services {
 	queue := rabbitqueue.NewQueue(conn)
-	store := store.NewRedisStore(rdb)
+
+	codeStore := store.NewCodeStore(rdb)
+	resendStore := store.NewResendStore(rdb)
+	sessionStore := store.NewSessionStore(rdb)
+	userStore := store.NewUserStore(rdb)
+
 	repo := repo.NewAuthRepo(pool)
-	service := services.NewAuthService(repo, manager, store, WebGoogleClientID, queue, logger)
+	service := services.NewAuthService(repo, manager, codeStore, resendStore, sessionStore, userStore, WebGoogleClientID, queue, logger)
 	return &Services{Service: service}
 }
 

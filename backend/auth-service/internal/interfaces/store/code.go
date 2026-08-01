@@ -10,7 +10,19 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (s *RedisStore) SaveVerificationCode(ctx context.Context, randStr string, value int, expiration time.Duration) error {
+const (
+	codeKey = "code:"
+)
+
+type CodeStore struct {
+	rdb *redis.Client
+}
+
+func NewCodeStore(rdb *redis.Client) *CodeStore {
+	return &CodeStore{rdb: rdb}
+}
+
+func (s *CodeStore) SaveVerificationCode(ctx context.Context, randStr string, value int, expiration time.Duration) error {
 	key := fmt.Sprintf("%s%s", codeKey, randStr)
 	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
@@ -18,7 +30,7 @@ func (s *RedisStore) SaveVerificationCode(ctx context.Context, randStr string, v
 	return nil
 }
 
-func (s *RedisStore) GetVerificationCode(ctx context.Context, randStr string) (string, error) {
+func (s *CodeStore) GetVerificationCode(ctx context.Context, randStr string) (string, error) {
 	key := fmt.Sprintf("%s%s", codeKey, randStr)
 	val, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {

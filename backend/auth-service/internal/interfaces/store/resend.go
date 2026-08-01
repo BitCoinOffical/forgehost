@@ -15,7 +15,15 @@ const (
 	resendTTL = time.Minute
 )
 
-func (s *RedisStore) ResendLimitAdd(ctx context.Context, email string) error {
+type ResendStore struct {
+	rdb *redis.Client
+}
+
+func NewResendStore(rdb *redis.Client) *ResendStore {
+	return &ResendStore{rdb: rdb}
+}
+
+func (s *ResendStore) ResendLimitAdd(ctx context.Context, email string) error {
 	key := fmt.Sprintf("%s%s", resendKey, email)
 	if err := s.rdb.Set(ctx, key, email, resendTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
@@ -23,7 +31,7 @@ func (s *RedisStore) ResendLimitAdd(ctx context.Context, email string) error {
 	return nil
 }
 
-func (s *RedisStore) ResendLimitCheck(ctx context.Context, email string) (string, error) {
+func (s *ResendStore) ResendLimitCheck(ctx context.Context, email string) (string, error) {
 	key := fmt.Sprintf("%s%s", resendKey, email)
 	res, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
