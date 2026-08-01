@@ -252,11 +252,37 @@ func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
+	var req *dto.UserPasswordDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
 
+	if req.NewPassword != req.NewPasswordRetry {
+		response.BadRequest(c, domain.ErrPasswordMismatch, "passwords do not match", h.logger)
+		return
+	}
+
+	idStr, err := middleware.GetUserID(c)
+	if err != nil {
+		if errors.Is(err, domain.ErrValueNotFound) {
+			response.Unauthorized(c, err, "not found value by key", h.logger)
+			return
+		}
+		response.BadRequest(c, err, "incorrect type value", h.logger)
+		return
+	}
+
+	if err := h.authsrvc.UpdatePassword(c.Request.Context(), req, idStr); err != nil {
+		response.InternalServerError(c, err, "failed update password", h.logger)
+		return
+	}
 }
+
 func (h *AuthHandler) PasswordReset(c *gin.Context) {
 
 }
+
 func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 
 }
