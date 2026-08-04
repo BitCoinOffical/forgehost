@@ -28,7 +28,12 @@ import (
 const (
 	AccessTTL       = 15 * time.Minute
 	RefreshTTL      = (24 * 30) * time.Hour
-	VerificationTTL = 5 * time.Minute
+	VerificationTTL = 7 * time.Minute
+	ResetPassTTL    = 7 * time.Minute
+	codeQueue       = "code_queue"
+	codeSubject     = "Verification Code"
+	resetQueue      = "reset_queue"
+	resetSubject    = "Password Reset Code"
 )
 
 type AuthService struct {
@@ -98,14 +103,33 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 }
 
 func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDTO) (*dto.PendingKeyDTO, error) {
-	newpass, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	_, err := s.resendStore.ResendLimitCheck(ctx, req.Email)
+	if err == nil {
+		return nil, fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("s.resendStore.ResendLimitCheck: %w", err)
+	}
+
+	if err := s.resendStore.ResendLimitAdd(ctx, req.Email); err != nil {
+		return nil, fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
+	}
+
+	_, err = s.repo.GetUserByEmail(ctx, req.Email)
+	if err == nil || !errors.Is(err, domain.ErrNotFound) {
+		if err == nil {
+			return nil, fmt.Errorf("s.repo.GetUserByEmail: %w", domain.ErrEmailAlreadyExists)
+		}
+		return nil, fmt.Errorf("s.repo.GetUserByEmail: %w", err)
+	}
+
+	hashpass, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
 	}
 
 	user := models.UserStored{
 		Email:        req.Email,
-		PasswordHash: newpass,
+		PasswordHash: hashpass,
 	}
 
 	randStr, err := jwtpkg.GenerateRandomString()
@@ -131,6 +155,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		Code:  codeStr,
 		Email: verify.Email,
 
+		TitleSubject: codeSubject,
+		TaskType:     codeQueue,
 		DispatchDate: time.Now().Add(VerificationTTL),
 	}
 
@@ -142,8 +168,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 	qctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.queue.AddQueue(qctx, b); err != nil {
-		return nil, fmt.Errorf("s.queue.AddQueue: %w", err)
+	if err := s.queue.AddVerificationCodeQueue(qctx, b); err != nil {
+		return nil, fmt.Errorf("s.queue.AddVerificationCodeQueue: %w", err)
 	}
 
 	logger.Info("verification code send")
@@ -376,6 +402,8 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 		Code:  codeStr,
 		Email: verify.Email,
 
+		TitleSubject: codeSubject,
+		TaskType:     codeQueue,
 		DispatchDate: time.Now().Add(VerificationTTL),
 	}
 
@@ -387,19 +415,15 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 	qctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.queue.AddQueue(qctx, b); err != nil {
-		return fmt.Errorf("s.queue.AddQueue: %w", err)
+	if err := s.queue.AddVerificationCodeQueue(qctx, b); err != nil {
+		return fmt.Errorf("s.queue.AddVerificationCodeQueue: %w", err)
 	}
 
-	logger.Info("verification code resent")
+	s.logger.Debug("verification code resend")
 	return nil
 }
 
 func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordDTO, userID string) error {
-	if req.NewPassword != req.NewPasswordRetry {
-		return domain.ErrPasswordMismatch
-	}
-
 	id, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("uuid.Parse: %w", err)
@@ -410,24 +434,145 @@ func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordD
 		return fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
 	}
 
-	userPass := models.UserPassword{
-		ID:          id,
-		OldPassword: []byte(req.OldPassword),
-		NewPassword: newPass,
-	}
-
-	user, err := s.repo.GetUserByID(ctx, userPass.ID)
+	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("s.repo.GetUserByID: %w", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword(userPass.OldPassword, user.PasswordHash); err != nil {
+	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(req.OldPassword)); err != nil {
 		return fmt.Errorf("bcrypt.CompareHashAndPassword: %w", domain.ErrInvalidCredentials)
 	}
 
-	if err := s.repo.UpdateUserPassword(ctx, &userPass, user.Email); err != nil {
+	userPass := models.User{
+		ID:           id,
+		Email:        user.Email,
+		PasswordHash: newPass,
+	}
+
+	if err := s.repo.UpdateUserPassword(ctx, &userPass); err != nil {
 		return fmt.Errorf("s.repo.UpdateUserPassword: %w", err)
 	}
 
+	s.logger.Debug("update password", zap.Any("user_id", id))
+	return nil
+}
+
+func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetDTO) (*dto.PendingKeyDTO, error) {
+	_, err := s.resendStore.ResendLimitCheck(ctx, req.Email)
+	if err == nil {
+		return nil, fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return nil, fmt.Errorf("s.resendStore.ResendLimitCheck: %w", err)
+	}
+
+	if err := s.resendStore.ResendLimitAdd(ctx, req.Email); err != nil {
+		return nil, fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
+	}
+
+	pendingKey, err := jwtpkg.GenerateRandomString()
+	if err != nil {
+		return nil, fmt.Errorf("jwtpkg.GenerateRandomString: %w", err)
+	}
+
+	code := rand.Intn(900000) + 100000
+	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, ResetPassTTL); err != nil {
+		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
+	}
+
+	codeStr := strconv.Itoa(code)
+	queue := models.RabbitQueue{
+		Email: req.Email,
+		Code:  codeStr,
+
+		TitleSubject: resetSubject,
+		TaskType:     resetQueue,
+		DispatchDate: time.Now().Add(ResetPassTTL),
+	}
+
+	body, err := json.Marshal(&queue)
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	if err := s.queue.AddResetCodeQueue(ctx, body); err != nil {
+		return nil, fmt.Errorf("s.queue.AddResetCodeQueue: %w", err)
+	}
+
+	return &dto.PendingKeyDTO{
+		PendingKey: pendingKey,
+	}, nil
+}
+
+func (s *AuthService) ConfirmPasswordReset(ctx context.Context, req *dto.PasswordResetDTO) error {
+	pass, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
+	}
+
+	rcode, err := s.codeStore.GetResetPasswordCode(ctx, req.PendingKey)
+	if err != nil {
+		return fmt.Errorf("s.codeStore.GetResetPasswordCode: %w", err)
+	}
+
+	if subtle.ConstantTimeCompare([]byte(req.Code), []byte(rcode)) != 1 {
+		return fmt.Errorf("subtle.ConstantTimeCompare: %w", domain.ErrInvalidCode)
+	}
+
+	usr, err := s.repo.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return fmt.Errorf("s.repo.GetUserByEmail: %w", err)
+	}
+
+	user := models.User{
+		ID:           usr.ID,
+		Email:        req.Email,
+		PasswordHash: pass,
+	}
+
+	if err := s.repo.UpdateUserPassword(ctx, &user); err != nil {
+		return fmt.Errorf("s.repo.UpdateUserPassword: %w", err)
+	}
+
+	s.logger.Debug("reset password", zap.Any("user_id", user.ID))
+	return nil
+}
+
+func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.PasswordResetDTO) error {
+	_, err := s.resendStore.ResendLimitCheck(ctx, req.Email)
+	if err == nil {
+		return fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
+	} else if !errors.Is(err, domain.ErrNotFound) {
+		return fmt.Errorf("s.resendStore.ResendLimitCheck: %w", err)
+	}
+
+	if err := s.resendStore.ResendLimitAdd(ctx, req.Email); err != nil {
+		return fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
+	}
+
+	code := rand.Intn(900000) + 100000
+	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, ResetPassTTL); err != nil {
+		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
+	}
+
+	codeStr := strconv.Itoa(code)
+	queue := models.RabbitQueue{
+		Email: req.Email,
+		Code:  codeStr,
+
+		TitleSubject: resetSubject,
+		TaskType:     resetQueue,
+		DispatchDate: time.Now().Add(ResetPassTTL),
+	}
+
+	body, err := json.Marshal(&queue)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	if err := s.queue.AddResetCodeQueue(ctx, body); err != nil {
+		return fmt.Errorf("s.queue.AddResetCodeQueue: %w", err)
+	}
+
+	s.logger.Debug("reset password code resend")
 	return nil
 }
