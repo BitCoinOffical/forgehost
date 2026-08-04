@@ -77,16 +77,12 @@ func main() {
 	}
 	logger.Info("redis applied successfully")
 
-	conn, err := rabbitmq.NewRabbitMQ(&rabbitmq.RabbitURL{
+	rc := rabbitmq.NewResilientConnection(&rabbitmq.RabbitURL{
 		User: cfg.RabbitMQ.RabbitUser,
 		Pass: cfg.RabbitMQ.RabbitPass,
 		Host: cfg.RabbitMQ.RabbitHost,
 		Port: cfg.RabbitMQ.RabbitPort,
-	})
-	if err != nil {
-		logger.Fatal("rabbitMQ failed", zap.Error(err))
-	}
-	logger.Info("rabbitMQ applied successfully")
+	}, logger)
 
 	if err := migrations.RunMigrations(pool); err != nil {
 		logger.Fatal("migrations failed", zap.Error(err))
@@ -95,7 +91,7 @@ func main() {
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
-	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, conn, logger)
+	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, rc, logger)
 	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
 		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
 		ClientID:     cfg.WebGoogle.WebClientID,
@@ -118,9 +114,7 @@ func main() {
 	defer cancel()
 	logger.Info("received a signal indicating the completion of operations")
 
-	if err := rabbitmq.CloseRabbitMQ(conn); err != nil {
-		logger.Fatal("CloseRabbitMQ error", zap.Error(err))
-	}
+	rc.Close()
 	logger.Info("rabbitMQ conn closed")
 
 	postgresdb.ClosePool(pool)

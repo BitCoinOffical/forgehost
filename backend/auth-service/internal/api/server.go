@@ -52,12 +52,13 @@ func (s *Server) Run() error {
 		auth.GET("/login/google", s.h.Auth.GoogleLogin)             //web
 		auth.GET("/login/google/callback", s.h.Auth.GoogleCallback) //web
 
-		auth.POST("/verify-email", s.m.AuthMiddleware(), s.h.Auth.VerifyEmail)
-		auth.POST("/verify-email/resend", s.m.AuthMiddleware(), s.h.Auth.ResendVerifyEmail)
+		auth.POST("/verify-email", s.h.Auth.VerifyEmail)
+		auth.POST("/verify-email/resend", s.h.Auth.ResendVerifyEmail)
 
 		auth.PATCH("/password/update", s.m.AuthMiddleware(), s.h.Auth.UpdatePassword)
 		auth.POST("/password/reset", s.h.Auth.PasswordReset)
 		auth.POST("/password/reset/confirm", s.h.Auth.ConfirmPasswordReset)
+		auth.POST("/password/reset/resend", s.h.Auth.PasswordResetResend)
 	}
 
 	return s.server.ListenAndServe()

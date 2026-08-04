@@ -21,12 +21,27 @@ func NewAuthRepo(pool *pgxpool.Pool) *AuthRepo {
 	return &AuthRepo{pool: pool}
 }
 
+func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	var user models.User
+
+	sql := `SELECT email, email_verified, password_hash FROM users WHERE id = $1`
+	err := r.pool.QueryRow(ctx, sql, id).Scan(&user.Email, &user.EmailVerified, &user.PasswordHash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
+		}
+		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
+	}
+
+	return &user, nil
+}
+
 func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 
-	sql := `SELECT id, password_hash FROM users WHERE email = $1`
+	sql := `SELECT id, email_verified, password_hash FROM users WHERE email = $1`
 
-	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.PasswordHash)
+	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
@@ -38,7 +53,7 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 }
 
 func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, error) {
-	sql := `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`
+	sql := `INSERT INTO users (email, password_hash, email_verified) VALUES ($1, $2, true) RETURNING id`
 
 	var id uuid.UUID
 
@@ -81,8 +96,12 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 	} else if err != nil {
 		return uuid.Nil, fmt.Errorf("check user by email: %w", err)
 	} else {
-		if _, err := tx.Exec(ctx, `UPDATE users SET email_verified=true WHERE id=$1 AND email_verified=false`, userID); err != nil {
+		tag, err := tx.Exec(ctx, `UPDATE users SET email_verified=true WHERE id=$1 AND email_verified=false`, userID)
+		if err != nil {
 			return uuid.Nil, fmt.Errorf("update email_verified: %w", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return uuid.Nil, domain.ErrNotFound
 		}
 	}
 
@@ -98,4 +117,16 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 		return uuid.Nil, fmt.Errorf("tx.Commit: %w", err)
 	}
 	return userID, nil
+}
+
+func (r *AuthRepo) UpdateUserPassword(ctx context.Context, user *models.User) error {
+	sql := `UPDATE users SET password_hash = $1 WHERE id = $2 AND email = $3`
+	tag, err := r.pool.Exec(ctx, sql, user.PasswordHash, user.ID, user.Email)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
 }
