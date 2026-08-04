@@ -119,9 +119,9 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 	return userID, nil
 }
 
-func (r *AuthRepo) UpdateUserPassword(ctx context.Context, req *models.UserPassword, email string) error {
+func (r *AuthRepo) UpdateUserPassword(ctx context.Context, user *models.User) error {
 	sql := `UPDATE users SET password_hash = $1 WHERE id = $2 AND email = $3`
-	tag, err := r.pool.Exec(ctx, sql, req.NewPassword, req.ID, email)
+	tag, err := r.pool.Exec(ctx, sql, user.PasswordHash, user.ID, user.Email)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
