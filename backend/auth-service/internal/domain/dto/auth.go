@@ -1,15 +1,5 @@
 package dto
 
-type VerifyEmailDTO struct {
-	Email      string `json:"email"`
-	PendingKey string `json:"pending_key"`
-	Code       string `json:"code"`
-}
-
-type PendingKeyDTO struct {
-	PendingKey string `json:"pending_key"`
-}
-
 type TokensDTO struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -35,13 +25,34 @@ type UsersRegisterDTO struct {
 	PasswordRetry string `json:"password_retry"`
 }
 
+type UsersLoginDTO struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type VerifyEmailDTO struct {
+	Email string `json:"email"`
+	PendingKeyDTO
+	Code string `json:"code"`
+}
+
 type UserPasswordDTO struct {
-	OldPassword      string `json:"old_password"`
+	OldPassword string `json:"old_password"`
+	PasswordPair
+}
+
+type PasswordResetDTO struct {
+	Email string `json:"email"`
+	PasswordPair
+	PendingKeyDTO
+	Code string `json:"code"`
+}
+
+type PasswordPair struct {
 	NewPassword      string `json:"new_password"`
 	NewPasswordRetry string `json:"new_password_retry"`
 }
 
-type UsersLoginDTO struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type PendingKeyDTO struct {
+	PendingKey string `json:"pending_key"`
 }
