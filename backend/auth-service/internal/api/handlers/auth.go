@@ -325,12 +325,7 @@ func (h *AuthHandler) PasswordResetResend(c *gin.Context) {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
-
-	if req.NewPassword != req.NewPasswordRetry {
-		response.BadRequest(c, domain.ErrPasswordMismatch, "passwords do not match", h.logger)
-		return
-	}
-
+	
 	if err := h.authsrvc.PasswordResetResend(c.Request.Context(), &req); err != nil {
 		if errors.Is(err, domain.ErrToManyRequest) {
 			response.ManyRequest(c, err, "too many attempts", h.logger)
