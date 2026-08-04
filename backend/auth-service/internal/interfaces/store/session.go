@@ -12,20 +12,18 @@ import (
 )
 
 const (
-	tokenKey   = "refresh:"
-	codeKey    = "code:"
-	pendingKey = "pending_key:"
+	tokenKey = "refresh:"
 )
 
-type RedisStore struct {
+type SessionStore struct {
 	rdb *redis.Client
 }
 
-func NewRedisStore(rdb *redis.Client) *RedisStore {
-	return &RedisStore{rdb: rdb}
+func NewSessionStore(rdb *redis.Client) *SessionStore {
+	return &SessionStore{rdb: rdb}
 }
 
-func (s *RedisStore) SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error {
+func (s *SessionStore) SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error {
 	key := fmt.Sprintf("%s%s", tokenKey, id.String())
 	if err := s.rdb.Set(ctx, key, value, RefreshTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
@@ -33,7 +31,7 @@ func (s *RedisStore) SaveToken(ctx context.Context, id uuid.UUID, value string, 
 	return nil
 }
 
-func (s *RedisStore) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
+func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
 	key := fmt.Sprintf("%s%s", tokenKey, id.String())
 	value, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -45,7 +43,7 @@ func (s *RedisStore) GetToken(ctx context.Context, id uuid.UUID) (string, error)
 	return value, nil
 }
 
-func (s *RedisStore) DeleteToken(ctx context.Context, id uuid.UUID) error {
+func (s *SessionStore) DeleteToken(ctx context.Context, id uuid.UUID) error {
 	key := fmt.Sprintf("%s%s", tokenKey, id.String())
 	if err := s.rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Del: %w", err)

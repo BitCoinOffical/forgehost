@@ -33,7 +33,7 @@ func NewResendSender(cfg *ResendConfig) *ResendClient {
 //go:embed template/code.html
 var templateFS embed.FS
 
-func (g *ResendClient) SendVerificationEmail(to []string, code string) (string, error) {
+func (g *ResendClient) SendCodeEmail(to []string, code string, Subject string) (string, error) {
 
 	tmpl, err := template.ParseFS(templateFS, "template/code.html")
 	if err != nil {
@@ -47,7 +47,7 @@ func (g *ResendClient) SendVerificationEmail(to []string, code string) (string, 
 	params := &resend.SendEmailRequest{
 		From:    resendFrom,
 		To:      to,
-		Subject: "Verification Code",
+		Subject: Subject,
 		Html:    buf.String(),
 	}
 

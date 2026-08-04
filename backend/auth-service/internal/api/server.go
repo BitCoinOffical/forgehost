@@ -58,6 +58,7 @@ func (s *Server) Run() error {
 		auth.PATCH("/password/update", s.m.AuthMiddleware(), s.h.Auth.UpdatePassword)
 		auth.POST("/password/reset", s.h.Auth.PasswordReset)
 		auth.POST("/password/reset/confirm", s.h.Auth.ConfirmPasswordReset)
+		auth.POST("/password/reset/resend", s.h.Auth.PasswordResetResend)
 	}
 
 	return s.server.ListenAndServe()
