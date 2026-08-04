@@ -224,10 +224,13 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
-	h.logger.Debug("received data", zap.Any("dto", req))
 
 	tokens, err := h.authsrvc.VerifyEmail(c.Request.Context(), &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrEmailAlreadyExists) {
+			response.Conflict(c, err, "email already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed verificate email", h.logger)
 		return
 	}
@@ -244,6 +247,7 @@ func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
 	if err := h.authsrvc.ResendVerifyEmail(c.Request.Context(), &req); err != nil {
 		if errors.Is(err, domain.ErrToManyRequest) {
 			response.ManyRequest(c, err, "too many attempts", h.logger)
+			return
 		}
 		response.InternalServerError(c, err, "failed update verify email", h.logger)
 		return
@@ -280,9 +284,61 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 }
 
 func (h *AuthHandler) PasswordReset(c *gin.Context) {
+	var req dto.PasswordResetDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
 
+	key, err := h.authsrvc.PasswordReset(c.Request.Context(), &req)
+	if err != nil {
+		response.InternalServerError(c, err, "failed reset password", h.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, key)
 }
 
 func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
+	var req dto.PasswordResetDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
 
+	if req.NewPassword != req.NewPasswordRetry {
+		response.BadRequest(c, domain.ErrPasswordMismatch, "passwords do not match", h.logger)
+		return
+	}
+
+	if err := h.authsrvc.ConfirmPasswordReset(c.Request.Context(), &req); err != nil {
+		response.InternalServerError(c, err, "failed reset password", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func (h *AuthHandler) PasswordResetResend(c *gin.Context) {
+	var req dto.PasswordResetDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	if req.NewPassword != req.NewPasswordRetry {
+		response.BadRequest(c, domain.ErrPasswordMismatch, "passwords do not match", h.logger)
+		return
+	}
+
+	if err := h.authsrvc.PasswordResetResend(c.Request.Context(), &req); err != nil {
+		if errors.Is(err, domain.ErrToManyRequest) {
+			response.ManyRequest(c, err, "too many attempts", h.logger)
+			return
+		}
+		response.InternalServerError(c, err, "failed update verify email", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
