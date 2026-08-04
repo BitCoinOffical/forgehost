@@ -22,12 +22,6 @@ type UserStored struct {
 	PasswordHash []byte `redis:"password_hash"`
 }
 
-type UserPassword struct {
-	ID          uuid.UUID
-	OldPassword []byte
-	NewPassword []byte
-}
-
 type User struct {
 	ID            uuid.UUID `db:"id"`
 	Name          *string   `db:"name"`
