@@ -4,7 +4,6 @@ import (
 	"BitCoinOffical/forgehost/auth-service/config"
 	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
 	"BitCoinOffical/forgehost/auth-service/internal/adapters/email"
-	"BitCoinOffical/forgehost/auth-service/internal/worker/connect"
 	"BitCoinOffical/forgehost/auth-service/internal/worker/sender"
 
 	loggerpkg "BitCoinOffical/forgehost/auth-service/pkg/logger"
@@ -20,6 +19,8 @@ import (
 const (
 	maxWorkers    = 4
 	timeoutSecond = 5
+	codeQueue     = "code_queue"
+	resetQueue    = "reset_queue"
 )
 
 func main() {
@@ -43,29 +44,33 @@ func main() {
 	})
 	logger.Info("resend started")
 
-	conn, err := rabbitmq.NewRabbitMQ(&rabbitmq.RabbitURL{
+	rc := rabbitmq.NewResilientConnection(&rabbitmq.RabbitURL{
 		User: cfg.RabbitMQ.RabbitUser,
 		Pass: cfg.RabbitMQ.RabbitPass,
 		Host: cfg.RabbitMQ.RabbitHost,
 		Port: cfg.RabbitMQ.RabbitPort,
-	})
-	if err != nil {
-		logger.Fatal("rabbitMQ failed", zap.Error(err))
-	}
-	logger.Info("rabbitMQ applied successfully")
+	}, logger)
 
-	consumer := connect.NewRunConsumer(conn, logger)
-	work := sender.NewWorker(logger, rclient, consumer)
-	errs := work.WorkerPool(4)
-	for err := range errs {
-		logger.Error("worker error", zap.Error(err))
-	}
+	verifyWork := sender.NewWorker(logger, rclient, rc, codeQueue)
+	verifyErrs := verifyWork.WorkerPool(2)
+
+	resetWork := sender.NewWorker(logger, rclient, rc, resetQueue)
+	resetErrs := resetWork.WorkerPool(2)
+
+	go func() {
+		for err := range verifyErrs {
+			logger.Error("verify worker error", zap.Error(err))
+		}
+	}()
+	go func() {
+		for err := range resetErrs {
+			logger.Error("reset worker error", zap.Error(err))
+		}
+	}()
 
 	<-ctx.Done()
 	logger.Info("received a signal indicating the completion of operations")
 
-	if err := rabbitmq.CloseRabbitMQ(conn); err != nil {
-		logger.Fatal("CloseRabbitMQ error", zap.Error(err))
-	}
+	rc.Close()
 	logger.Info("rabbitMQ conn closed")
 }
