@@ -1,4 +1,4 @@
-module github.com/BitCoinOffical/backend/proto
+module github.com/BitCoinOffical/forgehost/backend/proto
 
 go 1.26.4
 
