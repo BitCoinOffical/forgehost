@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package notification.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/BitCoinOffical/backend/proto/notification/v1;notificationv1";
+
+service NotificationService {
+  rpc SendEmail(SendEmailRequest) returns (SendEmailResponse);
+}
+
+message SendEmailRequest {
+  string UserID = 1;
+  string Email = 2;
+  string Code = 3;
+
+  string TitleSubject = 4;
+  string TaskType = 5;
+  google.protobuf.Timestamp DispatchDate = 6;
+}
+
+message SendEmailResponse {
+  string EmailID = 1;
+  string Status = 2;
+}
