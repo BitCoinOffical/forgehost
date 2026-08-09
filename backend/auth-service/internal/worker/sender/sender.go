@@ -1,10 +1,15 @@
 package sender
 
 import (
-	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
-	"BitCoinOffical/forgehost/auth-service/internal/adapters/email"
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
-	"BitCoinOffical/forgehost/auth-service/internal/domain/dto"
+	"context"
+
+	notificationv1 "github.com/BitCoinOffical/forgehost-proto/notification/v1"
+	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/notification"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 
 	"encoding/json"
 	"fmt"
@@ -21,21 +26,20 @@ const (
 	maxAttempts   = 5
 	prefetchCount = 1
 	prefetchSize  = 0
+	nameQueue     = "auth.email_tasks"
 )
 
 type Worker struct {
-	logger   *zap.Logger
-	rclient  *email.ResendClient
-	conn     *rabbitmq.ResilientConnection
-	TaskType string
+	logger *zap.Logger
+	client *notification.NotificationClient
+	conn   *rabbitmq.ResilientConnection
 }
 
-func NewWorker(logger *zap.Logger, rclient *email.ResendClient, conn *rabbitmq.ResilientConnection, TaskType string) *Worker {
+func NewWorker(logger *zap.Logger, client *notification.NotificationClient, conn *rabbitmq.ResilientConnection) *Worker {
 	return &Worker{
-		logger:   logger,
-		rclient:  rclient,
-		conn:     conn,
-		TaskType: TaskType,
+		logger: logger,
+		conn:   conn,
+		client: client,
 	}
 }
 
@@ -54,7 +58,7 @@ func (w *Worker) WorkerPool(worker int) <-chan error {
 				}
 
 				q, err := ch.QueueDeclare(
-					w.TaskType,
+					nameQueue,
 					true,
 					false,
 					false,
@@ -100,8 +104,7 @@ func (w *Worker) WorkerPool(worker int) <-chan error {
 					continue
 				}
 
-				w.logger.Info("consumer started", zap.String("queue", w.TaskType))
-				w.logger.Info("worker started", zap.Int("number", num+1), zap.String("task", w.TaskType))
+				w.logger.Info("worker started", zap.Int("number", num+1))
 
 				for msg := range msgs {
 					var body dto.RabbitQueueDTO
@@ -118,17 +121,24 @@ func (w *Worker) WorkerPool(worker int) <-chan error {
 						continue
 					}
 
-					sentId, err := w.rclient.SendCodeEmail([]string{body.Email}, body.Code, body.TitleSubject)
+					res, err := w.client.SendEmail(context.Background(), &notificationv1.SendEmailRequest{
+						UserId:       body.UserID,
+						Email:        body.Email,
+						Code:         body.Code,
+						TitleSubject: body.TitleSubject,
+
+						DispatchDate: timestamppb.New(body.DispatchDate),
+					})
 					if err != nil {
-						errs <- fmt.Errorf("w.rclient.SendVerificationEmail: %w", err)
+						errs <- fmt.Errorf("w.client.SendEmail: %w", err)
 						msg.Nack(false, true)
 						continue
 					}
-					w.logger.Info("email sent successfully:", zap.Any("email id", sentId))
+					w.logger.Info("email send", zap.Any("email id", res.GetEmailId()), zap.String("status", res.GetStatus()))
 					msg.Ack(false)
 				}
 				ch.Close()
-				w.logger.Info("worker stoped", zap.Int("number", num+1), zap.String("task", w.TaskType))
+				w.logger.Info("worker stoped", zap.Int("number", num+1))
 			}
 		})
 	}

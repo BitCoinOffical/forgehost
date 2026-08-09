@@ -1,15 +1,15 @@
 package services
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
-	"BitCoinOffical/forgehost/auth-service/internal/domain/dto"
-	"BitCoinOffical/forgehost/auth-service/internal/domain/models"
-	rabbitqueue "BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
 	"errors"
 
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	rabbitqueue "github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
+
 	"context"
 	"crypto/subtle"
 	"encoding/json"
@@ -17,6 +17,8 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/bytedance/gopkg/util/logger"
@@ -30,9 +32,7 @@ const (
 	RefreshTTL      = (24 * 30) * time.Hour
 	VerificationTTL = 7 * time.Minute
 	ResetPassTTL    = 7 * time.Minute
-	codeQueue       = "code_queue"
 	codeSubject     = "Verification Code"
-	resetQueue      = "reset_queue"
 	resetSubject    = "Password Reset Code"
 )
 
@@ -156,7 +156,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		Email: verify.Email,
 
 		TitleSubject: codeSubject,
-		TaskType:     codeQueue,
 		DispatchDate: time.Now().Add(VerificationTTL),
 	}
 
@@ -168,8 +167,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 	qctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.queue.AddVerificationCodeQueue(qctx, b); err != nil {
-		return nil, fmt.Errorf("s.queue.AddVerificationCodeQueue: %w", err)
+	if err := s.queue.AddEmailTaskQueue(qctx, b); err != nil {
+		return nil, fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
 	logger.Info("verification code send")
@@ -403,7 +402,6 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 		Email: verify.Email,
 
 		TitleSubject: codeSubject,
-		TaskType:     codeQueue,
 		DispatchDate: time.Now().Add(VerificationTTL),
 	}
 
@@ -415,8 +413,8 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 	qctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := s.queue.AddVerificationCodeQueue(qctx, b); err != nil {
-		return fmt.Errorf("s.queue.AddVerificationCodeQueue: %w", err)
+	if err := s.queue.AddEmailTaskQueue(qctx, b); err != nil {
+		return fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
 	s.logger.Debug("verification code resend")
@@ -485,7 +483,6 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		TaskType:     resetQueue,
 		DispatchDate: time.Now().Add(ResetPassTTL),
 	}
 
@@ -494,8 +491,8 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 		return nil, fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	if err := s.queue.AddResetCodeQueue(ctx, body); err != nil {
-		return nil, fmt.Errorf("s.queue.AddResetCodeQueue: %w", err)
+	if err := s.queue.AddEmailTaskQueue(ctx, body); err != nil {
+		return nil, fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
 	return &dto.PendingKeyDTO{
@@ -560,7 +557,6 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		TaskType:     resetQueue,
 		DispatchDate: time.Now().Add(ResetPassTTL),
 	}
 
@@ -569,8 +565,8 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 		return fmt.Errorf("json.Marshal: %w", err)
 	}
 
-	if err := s.queue.AddResetCodeQueue(ctx, body); err != nil {
-		return fmt.Errorf("s.queue.AddResetCodeQueue: %w", err)
+	if err := s.queue.AddEmailTaskQueue(ctx, body); err != nil {
+		return fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
 	s.logger.Debug("reset password code resend")

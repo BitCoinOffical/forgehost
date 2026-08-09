@@ -14,12 +14,12 @@ const (
 type Env string
 
 type Config struct {
-	Postgres  PostgresConfig
-	WebGoogle WebGoogleConfig
-	Resend    ResendConfig
-	RabbitMQ  RabbitConfig
-	Redis     RedisConfig
-	App       AppConfig
+	Notification NotificationConfig
+	WebGoogle    WebGoogleConfig
+	Postgres     PostgresConfig
+	RabbitMQ     RabbitConfig
+	Redis        RedisConfig
+	App          AppConfig
 }
 
 type RabbitConfig struct {
@@ -55,8 +55,8 @@ type RedisConfig struct {
 	RDBPass string `env:"RDB_PASS,required"`
 }
 
-type ResendConfig struct {
-	ResendApiKey string `env:"RESEND_API_KEY,required"`
+type NotificationConfig struct {
+	NotificationAddr string `env:"NOTIFICATION_GRPC_ADDR,required"`
 }
 
 type AppConfig struct {
@@ -80,15 +80,15 @@ func NewLoad() (*Config, error) {
 		return nil, err
 	}
 
-	if err := env.Parse(&cfg.Resend); err != nil {
-		return nil, err
-	}
-
 	if err := env.Parse(&cfg.RabbitMQ); err != nil {
 		return nil, err
 	}
 
 	if err := env.Parse(&cfg.Redis); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Notification); err != nil {
 		return nil, err
 	}
 

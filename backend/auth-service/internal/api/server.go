@@ -1,9 +1,9 @@
 package api
 
 import (
-	"BitCoinOffical/forgehost/auth-service/config"
-	"BitCoinOffical/forgehost/auth-service/internal/api/handlers"
-	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
+	"github.com/BitCoinOffical/forgehost/auth-service/config"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/handlers"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
 	"context"
 	"fmt"
 	"net/http"

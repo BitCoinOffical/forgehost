@@ -1,22 +1,23 @@
 package main
 
 import (
-	"BitCoinOffical/forgehost/auth-service/config"
-	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
-	"BitCoinOffical/forgehost/auth-service/internal/adapters/migrations"
-	postgresdb "BitCoinOffical/forgehost/auth-service/internal/adapters/postgres"
-	redisdb "BitCoinOffical/forgehost/auth-service/internal/adapters/redis"
-	"BitCoinOffical/forgehost/auth-service/internal/api"
-	"BitCoinOffical/forgehost/auth-service/internal/api/handlers"
-	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
-	loggerpkg "BitCoinOffical/forgehost/auth-service/pkg/logger"
 	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/config"
+	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/migrations"
+	postgresdb "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/postgres"
+	redisdb "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/redis"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/handlers"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	loggerpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/logger"
 
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"

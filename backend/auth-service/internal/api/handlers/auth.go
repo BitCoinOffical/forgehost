@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/api/middleware"
-	"BitCoinOffical/forgehost/auth-service/internal/api/response"
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
-	"BitCoinOffical/forgehost/auth-service/internal/domain/dto"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"encoding/json"
 	"errors"
 	"io"

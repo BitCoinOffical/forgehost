@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/api/response"
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"net/http"
 	"strings"
 

@@ -62,6 +62,14 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  notification-service:
+    ports:
+      - "8083:8083"
+    build: ./backend/notification-service
+    command: ["./notification-app"]
+    env_file:
+      - ./backend/notification-service/.env
+
 volumes:
   postgres_data:
   redis_data:
