@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
-	"BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"context"
 	"errors"
 	"fmt"

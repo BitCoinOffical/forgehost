@@ -1,7 +1,7 @@
 package store
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"context"
 	"errors"
 	"fmt"

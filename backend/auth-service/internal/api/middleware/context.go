@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"BitCoinOffical/forgehost/auth-service/internal/domain"
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
