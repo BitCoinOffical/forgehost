@@ -1,9 +1,10 @@
 package rabbitqueue
 
 import (
-	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
 	"context"
 	"fmt"
+
+	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -11,8 +12,7 @@ import (
 const (
 	attemptTTL  = 10000 //10sec
 	maxAttempts = 5
-	codeQueue   = "code_queue"
-	resetQueue  = "reset_queue"
+	nameQueue   = "auth.email_tasks"
 )
 
 type RabbitQueue struct {
@@ -25,7 +25,7 @@ func NewQueue(rc *rabbitmq.ResilientConnection) *RabbitQueue {
 	}
 }
 
-func (r *RabbitQueue) AddVerificationCodeQueue(ctx context.Context, body []byte) error {
+func (r *RabbitQueue) AddEmailTaskQueue(ctx context.Context, body []byte) error {
 	ch, err := r.rc.NewChannel()
 	if err != nil {
 		return fmt.Errorf("r.conn.Channel: %w", err)
@@ -35,50 +35,7 @@ func (r *RabbitQueue) AddVerificationCodeQueue(ctx context.Context, body []byte)
 	}()
 
 	q, err := ch.QueueDeclare(
-		codeQueue,
-		true,
-		false,
-		false,
-		false,
-		amqp.Table{
-			amqp.QueueTypeArg:  amqp.QueueTypeQuorum,
-			"x-message-ttl":    attemptTTL,
-			"x-delivery-limit": maxAttempts,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("ch.QueueDeclar: %w", err)
-	}
-
-	err = ch.PublishWithContext(
-		ctx,
-		"",
-		q.Name,
-		false,
-		false,
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			ContentType:  "application/json",
-			Body:         body,
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("ch.PublishWithContext: %w", err)
-	}
-	return nil
-}
-
-func (r *RabbitQueue) AddResetCodeQueue(ctx context.Context, body []byte) error {
-	ch, err := r.rc.NewChannel()
-	if err != nil {
-		return fmt.Errorf("r.conn.Channel: %w", err)
-	}
-	defer func() {
-		ch.Close()
-	}()
-
-	q, err := ch.QueueDeclare(
-		resetQueue,
+		nameQueue,
 		true,
 		false,
 		false,
