@@ -1,26 +1,24 @@
 package main
 
 import (
-	"BitCoinOffical/forgehost/auth-service/config"
-	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
-	"BitCoinOffical/forgehost/auth-service/internal/adapters/email"
-	"BitCoinOffical/forgehost/auth-service/internal/worker/sender"
+	"github.com/BitCoinOffical/forgehost/auth-service/config"
+	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/notification"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/worker/sender"
 
-	loggerpkg "BitCoinOffical/forgehost/auth-service/pkg/logger"
 	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	loggerpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/logger"
+
 	"go.uber.org/zap"
 )
 
 const (
-	maxWorkers    = 4
-	timeoutSecond = 5
-	codeQueue     = "code_queue"
-	resetQueue    = "reset_queue"
+	maxWorkers = 4
 )
 
 func main() {
@@ -39,11 +37,6 @@ func main() {
 	logger.Info("config load")
 	logger.Info("logger start")
 
-	rclient := email.NewResendSender(&email.ResendConfig{
-		ResendApiKey: cfg.Resend.ResendApiKey,
-	})
-	logger.Info("resend started")
-
 	rc := rabbitmq.NewResilientConnection(&rabbitmq.RabbitURL{
 		User: cfg.RabbitMQ.RabbitUser,
 		Pass: cfg.RabbitMQ.RabbitPass,
@@ -51,25 +44,25 @@ func main() {
 		Port: cfg.RabbitMQ.RabbitPort,
 	}, logger)
 
-	verifyWork := sender.NewWorker(logger, rclient, rc, codeQueue)
-	verifyErrs := verifyWork.WorkerPool(2)
+	client, err := notification.NewNotificationClient(&notification.NotificationConfig{
+		Addr: cfg.Notification.NotificationAddr,
+	})
+	if err != nil {
+		logger.Fatal("failed connect grpc notificatin ")
+	}
+	logger.Info("successful connection grpc notificatin")
 
-	resetWork := sender.NewWorker(logger, rclient, rc, resetQueue)
-	resetErrs := resetWork.WorkerPool(2)
-
-	go func() {
-		for err := range verifyErrs {
-			logger.Error("verify worker error", zap.Error(err))
-		}
-	}()
-	go func() {
-		for err := range resetErrs {
-			logger.Error("reset worker error", zap.Error(err))
-		}
-	}()
+	Work := sender.NewWorker(logger, client, rc)
+	Errs := Work.WorkerPool(maxWorkers)
+	for err := range Errs {
+		logger.Error("worker error", zap.Error(err))
+	}
 
 	<-ctx.Done()
 	logger.Info("received a signal indicating the completion of operations")
+
+	client.Close()
+	logger.Info("gRPC conn closed")
 
 	rc.Close()
 	logger.Info("rabbitMQ conn closed")
