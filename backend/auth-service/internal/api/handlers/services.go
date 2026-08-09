@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	rabbitmq "BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
-	rabbitqueue "BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
-	"BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
-	jwtpkg "BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
+	rabbitqueue "github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
