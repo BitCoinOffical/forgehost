@@ -1,4 +1,4 @@
-module BitCoinOffical/forgehost/auth-service
+module github.com/BitCoinOffical/forgehost/auth-service
 
 go 1.26.4
 
@@ -22,6 +22,7 @@ require (
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
+	github.com/BitCoinOffical/forgehost-proto v0.1.2 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -71,6 +72,6 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/api v0.289.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/grpc v1.82.0 // indirect
+	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
