@@ -8,6 +8,5 @@ type RabbitQueueDTO struct {
 	Email  string `json:"email"`
 
 	TitleSubject string    `json:"subject"`
-	TaskType     string    `json:"task_type"`
 	DispatchDate time.Time `json:"dispatch_date"`
 }
