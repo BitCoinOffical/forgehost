@@ -1,11 +1,12 @@
 package repo
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -39,7 +40,7 @@ func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User,
 func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 
-	sql := `SELECT id, email_verified, password_hash FROM users WHERE email = $1`
+	sql := `SELECT id, email_verified, password_hash, updated_at, created_at FROM users WHERE email = $1`
 
 	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash)
 	if err != nil {
