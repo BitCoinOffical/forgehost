@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users(
     password_hash VARCHAR,
     picture VARCHAR,
     email_verified BOOLEAN NOT NULL DEFAULT false,
+    email_banned BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -24,16 +25,6 @@ CREATE TABLE IF NOT EXISTS oauth_accounts(
     UNIQUE(provider, provider_user_id)
 );
 
-CREATE TABLE IF NOT EXISTS profile(
-    user_id UUID PRIMARY KEY,
-    username VARCHAR UNIQUE,
-    bio VARCHAR(4096),
-    avatar_url VARCHAR,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
 -- +goose Down
 DROP TABLE IF EXISTS oauth_accounts;
 DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS profile;
