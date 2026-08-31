@@ -28,11 +28,11 @@ func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
 	}
-	accessToken, err := s.tokens.GenerateToken(id, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
-	refreshToken, err := s.tokens.GenerateToken(id, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
@@ -87,11 +87,11 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 		return nil, fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
 	}
 
-	accessToken, err := s.tokens.GenerateToken(id, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
-	refreshToken, err := s.tokens.GenerateToken(id, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
