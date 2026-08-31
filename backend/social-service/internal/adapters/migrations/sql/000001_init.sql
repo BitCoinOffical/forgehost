@@ -1,11 +1,14 @@
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+CREATE TYPE profile_role AS ENUM ('user', 'admin');
+
 CREATE TABLE IF NOT EXISTS profiles(
     user_id UUID PRIMARY KEY,
     username VARCHAR UNIQUE,
     bio VARCHAR(4096),
     avatar_url VARCHAR,
+    role profile_role NOT NULL DEFAULT 'user',
     is_banned BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -23,29 +26,48 @@ CREATE TABLE IF NOT EXISTS blocks(
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (
-    user_id    UUID NOT NULL,
-    target_id  UUID NOT NULL,
+    user_id    UUID  NOT NULL,
+    target_user_id  UUID,
+    target_topic_id BIGINT,
     created_at TIMESTAMP DEFAULT NOW(),
-    PRIMARY KEY (user_id, target_id),
+
     FOREIGN KEY (user_id) REFERENCES profiles(user_id),
-    FOREIGN KEY (target_id) REFERENCES profiles(user_id)
+    FOREIGN KEY (target_user_id) REFERENCES profiles(user_id),
+    FOREIGN KEY (target_topic_id) REFERENCES topics(id),
+
+    CHECK(
+        (target_topic_id IS NOT NULL AND target_user_id IS NULL)
+        OR
+        (target_topic_id IS NULL AND target_user_id IS NOT NULL)
+    )
+);
+
+CREATE TABLE IF NOT EXISTS topics (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR UNIQUE NOT NULL,
+    is_delete BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS posts(
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    topic_id UUID,
     user_id UUID NOT NULL,
     image_url TEXT,
     description VARCHAR,
     views INTEGER DEFAULT 0,
+
     is_delete BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
 
-    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id),
+    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS comments(
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID NOT NULL,
     user_id UUID NOT NULL,
     parent_id UUID,
@@ -108,7 +130,7 @@ CREATE TABLE IF NOT EXISTS comment_reports (
 );
 
 CREATE TABLE IF NOT EXISTS profile_reports (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
     target_id UUID NOT NULL, 
     cause VARCHAR,
