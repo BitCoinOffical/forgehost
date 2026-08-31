@@ -13,6 +13,7 @@ import (
 
 type Claims struct {
 	UserID     string `json:"user_id"`
+	UserRole   string `json:"role"`
 	IsVerified bool   `json:"is_verified"`
 	IsBanned   bool   `json:"is_banned"`
 	jwt.RegisteredClaims
@@ -57,9 +58,10 @@ func (m *ManagerToken) ValidateToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-func (m *ManagerToken) GenerateToken(userID uuid.UUID, IsVerified bool, IsBanned bool, ttl time.Duration) (string, error) {
+func (m *ManagerToken) GenerateToken(userID uuid.UUID, UserRole string, IsVerified bool, IsBanned bool, ttl time.Duration) (string, error) {
 	claims := Claims{
 		UserID:     userID.String(),
+		UserRole:   UserRole,
 		IsVerified: IsVerified,
 		IsBanned:   IsBanned,
 		RegisteredClaims: jwt.RegisteredClaims{
