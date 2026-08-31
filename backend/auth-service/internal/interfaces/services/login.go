@@ -13,6 +13,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	role = "user"
+)
+
 func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
@@ -23,11 +27,11 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 		return nil, fmt.Errorf("bcrypt.CompareHashAndPassword: %w", domain.ErrInvalidCredentials)
 	}
 
-	accessToken, err := s.tokens.GenerateToken(user.ID, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
-	refreshToken, err := s.tokens.GenerateToken(user.ID, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
