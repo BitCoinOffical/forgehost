@@ -79,23 +79,65 @@ func (h *ProfileHandler) GetSubscribers(c *gin.Context) {
 func (h *ProfileHandler) GetSubscriptions(c *gin.Context) {
 	userId := c.Param("user_id")
 
-	subscr, err := h.srvc.GetSubscriptions(c.Request.Context(), userId)
+	subs, err := h.srvc.GetSubscriptions(c.Request.Context(), userId)
 	if err != nil {
 		response.InternalServerError(c, err, "failed get GetSubscriptions", h.logger)
 		return
 	}
 
-	c.JSON(http.StatusOK, profile)
+	c.JSON(http.StatusOK, subs)
 }
 
 func (h *ProfileHandler) Subscribe(c *gin.Context) {
+	userId, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+	targetId := c.Param("user_id")
 
+	if err := h.srvc.Subscribe(c.Request.Context(), userId, targetId); err != nil {
+		response.InternalServerError(c, err, "failed subscribe", h.logger)
+		return
+	}
+
+	c.Status(http.StatusCreated)
 }
 
 func (h *ProfileHandler) Unsubscribe(c *gin.Context) {
+	userId, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+	targetId := c.Param("user_id")
 
+	if err := h.srvc.UnSubscribe(c.Request.Context(), userId, targetId); err != nil {
+		response.InternalServerError(c, err, "failed unsubscribe", h.logger)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
 
 func (h *ProfileHandler) Report(c *gin.Context) {
+	userId, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+	targetId := c.Param("user_id")
 
+	var req dto.ProfileReportDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	if err := h.srvc.Report(c.Request.Context(), userId, targetId, req); err != nil {
+		response.InternalServerError(c, err, "failed create profile report", h.logger)
+		return
+	}
+
+	c.Status(http.StatusCreated)
 }
