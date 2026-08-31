@@ -67,3 +67,24 @@ func (s *ProfileService) GetSubscribers(ctx context.Context, id string) ([]model
 	}
 	return subscr, nil
 }
+
+func (s *ProfileService) Subscribe(ctx context.Context, userId, targetId string) error {
+	if err := s.repo.Subscribe(ctx, userId, targetId); err != nil {
+		return fmt.Errorf("s.repo.Subscribe: %w", err)
+	}
+	return nil
+}
+
+func (s *ProfileService) UnSubscribe(ctx context.Context, userId, targetId string) error {
+	if err := s.repo.UnSubscribe(ctx, userId, targetId); err != nil {
+		return fmt.Errorf("s.repo.UnSubscribe: %w", err)
+	}
+	return nil
+}
+
+func (r *ProfileService) Report(ctx context.Context, userId, targetId string, req dto.ProfileReportDTO) error {
+	if err := r.repo.CreateProfileReport(ctx, userId, targetId, req.Cause); err != nil {
+		return fmt.Errorf("r.repo.CreateProfileReport: %w", err)
+	}
+	return nil
+}
