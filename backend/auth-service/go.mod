@@ -1,9 +1,10 @@
 module github.com/BitCoinOffical/forgehost/auth-service
 
-go 1.26.4
+go 1.27.0
 
 require (
 	cloud.google.com/go/auth v0.20.0
+	github.com/BitCoinOffical/forgehost-proto v0.1.2
 	github.com/bytedance/gopkg v0.1.3
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.12.0
@@ -13,16 +14,17 @@ require (
 	github.com/pressly/goose/v3 v3.27.2
 	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/redis/go-redis/v9 v9.21.0
-	github.com/resend/resend-go/v2 v2.28.0
+	github.com/segmentio/kafka-go v0.4.51
 	github.com/ulule/limiter/v3 v3.11.2
 	go.uber.org/zap v1.28.0
 	golang.org/x/crypto v0.54.0
 	golang.org/x/oauth2 v0.36.0
+	google.golang.org/grpc v1.83.0
+	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
-	github.com/BitCoinOffical/forgehost-proto v0.1.2 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
 	github.com/bytedance/sonic/loader v0.5.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -56,7 +58,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
-	github.com/segmentio/kafka-go v0.4.51 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
@@ -75,6 +76,4 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	google.golang.org/api v0.289.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/grpc v1.83.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 )
