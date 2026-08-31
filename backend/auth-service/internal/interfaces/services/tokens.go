@@ -33,7 +33,7 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens *dto.TokensD
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	accessToken, err := s.tokens.GenerateToken(id, user.IsVerified, user.IsBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(id, role, user.IsVerified, user.IsBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
