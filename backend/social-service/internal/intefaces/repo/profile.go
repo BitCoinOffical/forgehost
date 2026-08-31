@@ -131,3 +131,30 @@ func (r *ProfileRepo) GetSubscribers(ctx context.Context, id string) ([]models.S
 
 	return subscr, nil
 }
+
+func (r *ProfileRepo) Subscribe(ctx context.Context, userId, targetId string) error {
+	sql := `INSERT INTO subscriptions (user_id, target_id, created_at) VALUES ($1, $2, NOW())`
+	_, err := r.pool.Exec(ctx, sql, userId, targetId)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
+}
+
+func (r *ProfileRepo) UnSubscribe(ctx context.Context, userId, targetId string) error {
+	sql := `DELETE FROM subscriptions WHERE user_id = $1 AND target_id = $2`
+	_, err := r.pool.Exec(ctx, sql, userId, targetId)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
+}
+
+func (r *ProfileRepo) CreateProfileReport(ctx context.Context, userId, targetId, cause string) error {
+	sql := `INSERT INTO profile_reports (user_id, target_id, cause, created_at, updated_at) VALUES $1, $2, $3, NOW(), NOW()`
+	_, err := r.pool.Exec(ctx, sql, userId, targetId, cause)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
+}
