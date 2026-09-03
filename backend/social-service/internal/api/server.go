@@ -52,8 +52,9 @@ func (s *Server) Run() error {
 		social.DELETE("/profile/:user_id/unsubscribe", s.h.Profile.Unsubscribe)
 		social.POST("/profile/:user_id/report", s.h.Profile.Report)
 
-		social.GET("/posts")
-		social.GET("/posts/:post_id")
+		social.GET("/posts", s.h.Posts.GetSubPosts)
+		social.GET("/posts/global", s.h.Posts.GetGlobalPosts)
+		social.GET("/posts/:post_id", s.h.Posts.GetByID)
 		social.POST("/posts")
 		social.PATCH("/posts/:post_id")
 		social.DELETE("/posts/:post_id")
