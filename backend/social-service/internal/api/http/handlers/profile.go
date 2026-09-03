@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
@@ -41,6 +43,10 @@ func (h *ProfileHandler) GetProfileByID(c *gin.Context) {
 
 	profile, err := h.srvc.GetProfileByID(c.Request.Context(), userId)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "profile not found", h.logger)
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found"})
 		return
 	}
