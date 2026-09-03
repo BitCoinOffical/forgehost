@@ -6,9 +6,16 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	unique_violation = "23505"
 )
 
 type ProfileRepo struct {
@@ -34,12 +41,15 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 			SELECT COUNT(*) FROM posts 
 			WHERE p.user_id = posts.user_id AND posts.is_delete = false
 		) AS posts
-			FROM profiles p WHERE user_id = $1 
+			FROM profiles p WHERE p.user_id = $1 AND p.is_banned = false
     `
 
 	var resp models.Profile
 
 	if err := r.pool.QueryRow(ctx, sql, id).Scan(&resp.UserName, &resp.Bio, &resp.AvatarUrl, &resp.IsBanned, &resp.CreatedAt, &resp.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
 		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
 
@@ -49,6 +59,10 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 func (r *ProfileRepo) SaveProfile(ctx context.Context, profile *models.Profile) error {
 	sql := `INSERT INTO profiles (user_id, created_at, updated_at) VALUES ($1, NOW(), NOW())`
 	if _, err := r.pool.Exec(ctx, sql, profile.UserID); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return fmt.Errorf("profile alredy exists: %w", domain.ErrProfileAlreadyExists)
+		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
 	return nil
@@ -136,6 +150,10 @@ func (r *ProfileRepo) Subscribe(ctx context.Context, userId, targetId string) er
 	sql := `INSERT INTO subscriptions (user_id, target_id, created_at) VALUES ($1, $2, NOW())`
 	_, err := r.pool.Exec(ctx, sql, userId, targetId)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return fmt.Errorf("email alredy exists: %w", domain.ErrProfileAlreadyExists)
+		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
 	return nil
