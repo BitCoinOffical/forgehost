@@ -14,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const (
+	unique_violation = "23505"
+)
+
 type AuthRepo struct {
 	pool *pgxpool.Pool
 }
@@ -111,6 +115,10 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 		(user_id, provider, provider_user_id, given_name, family_name)
 		VALUES ($1, $2, $3, $4, $5)
 		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return uuid.Nil, fmt.Errorf("oauth account already linked: %w", domain.ErrEmailAlreadyExists)
+		}
 		return uuid.Nil, fmt.Errorf("tx.Exec: %w", err)
 	}
 
