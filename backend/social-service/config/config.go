@@ -33,9 +33,9 @@ type PostgresConfig struct {
 }
 
 type RedisConfig struct {
-	RDBSessionAddr string `env:"SESSION_RDB_ADDR,required"`
-	RDBSessionPort string `env:"SESSION_RDB_PORT,required"`
-	RDBSessionDB   int    `env:"SESSION_RDB_DB,required"`
+	RDBCacheAddr string `env:"CACHE_RDB_ADDR,required"`
+	RDBCachePort string `env:"CACHE_RDB_PORT,required"`
+	RDBCacheDB   int    `env:"CACHE_RDB_DB,required"`
 
 	RDBRateAddr  string `env:"RATE_RDB_ADDR,required"`
 	RDBRatePort  string `env:"RATE_RDB_PORT,required"`
@@ -46,7 +46,8 @@ type RedisConfig struct {
 
 type AppConfig struct {
 	DebugLevel string `env:"DEBUG_LEVEL,required"`
-	Port       string `env:"PORT,required"`
+	Port       string `env:"JWT_SECRET,required"`
+	Secret     string `env:"PORT,required"`
 }
 
 func NewLoad() (*Config, error) {
