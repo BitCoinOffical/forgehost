@@ -1,11 +1,12 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -24,7 +25,7 @@ func NewCodeStore(rdb *redis.Client) *CodeStore {
 }
 
 func (s *CodeStore) SaveVerificationCode(ctx context.Context, randStr string, value int, expiration time.Duration) error {
-	key := fmt.Sprintf("%s%s", codeKey, randStr)
+	key := codeKey + randStr
 	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
 	}
@@ -32,7 +33,7 @@ func (s *CodeStore) SaveVerificationCode(ctx context.Context, randStr string, va
 }
 
 func (s *CodeStore) SaveResetPasswordCode(ctx context.Context, randStr string, value int, expiration time.Duration) error {
-	key := fmt.Sprintf("%s%s", resetKey, randStr)
+	key := resetKey + randStr
 	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
 	}
@@ -40,7 +41,7 @@ func (s *CodeStore) SaveResetPasswordCode(ctx context.Context, randStr string, v
 }
 
 func (s *CodeStore) GetResetPasswordCode(ctx context.Context, randStr string) (string, error) {
-	key := fmt.Sprintf("%s%s", resetKey, randStr)
+	key := resetKey + randStr
 	val, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -52,7 +53,7 @@ func (s *CodeStore) GetResetPasswordCode(ctx context.Context, randStr string) (s
 }
 
 func (s *CodeStore) GetVerificationCode(ctx context.Context, randStr string) (string, error) {
-	key := fmt.Sprintf("%s%s", codeKey, randStr)
+	key := codeKey + randStr
 	val, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
