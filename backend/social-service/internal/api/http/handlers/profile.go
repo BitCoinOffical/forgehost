@@ -125,7 +125,6 @@ func (h *ProfileHandler) Unsubscribe(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
-
 func (h *ProfileHandler) Report(c *gin.Context) {
 	userId, err := middleware.GetUserID(c)
 	if err != nil {
@@ -134,13 +133,13 @@ func (h *ProfileHandler) Report(c *gin.Context) {
 	}
 	targetId := c.Param("user_id")
 
-	var req dto.ProfileReportDTO
+	var req dto.ReportDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
-	if err := h.srvc.Report(c.Request.Context(), userId, targetId, req); err != nil {
+	if err := h.srvc.Report(c.Request.Context(), userId, targetId, &req); err != nil {
 		response.InternalServerError(c, err, "failed create profile report", h.logger)
 		return
 	}

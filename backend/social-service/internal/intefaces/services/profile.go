@@ -82,7 +82,7 @@ func (s *ProfileService) UnSubscribe(ctx context.Context, userId, targetId strin
 	return nil
 }
 
-func (r *ProfileService) Report(ctx context.Context, userId, targetId string, req dto.ProfileReportDTO) error {
+func (r *ProfileService) Report(ctx context.Context, userId, targetId string, req *dto.ReportDTO) error {
 	if err := r.repo.CreateProfileReport(ctx, userId, targetId, req.Cause); err != nil {
 		return fmt.Errorf("r.repo.CreateProfileReport: %w", err)
 	}

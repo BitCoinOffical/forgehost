@@ -64,7 +64,7 @@ func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, e
 
 	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&id); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return uuid.Nil, fmt.Errorf("email alredy exists: %w", domain.ErrEmailAlreadyExists)
 		}
 		return uuid.Nil, fmt.Errorf("r.pool.QueryRow: %w", err)

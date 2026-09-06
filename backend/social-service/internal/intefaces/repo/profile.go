@@ -61,7 +61,7 @@ func (r *ProfileRepo) SaveProfile(ctx context.Context, profile *models.Profile) 
 	if _, err := r.pool.Exec(ctx, sql, profile.UserID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
-			return fmt.Errorf("profile alredy exists: %w", domain.ErrProfileAlreadyExists)
+			return fmt.Errorf("profile alredy exists: %w", domain.ErrAlreadyExists)
 		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
@@ -152,7 +152,7 @@ func (r *ProfileRepo) Subscribe(ctx context.Context, userId, targetId string) er
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
-			return fmt.Errorf("email alredy exists: %w", domain.ErrProfileAlreadyExists)
+			return fmt.Errorf("subscribe alredy exists: %w", domain.ErrAlreadyExists)
 		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}

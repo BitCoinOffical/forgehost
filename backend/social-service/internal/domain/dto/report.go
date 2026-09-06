@@ -1,5 +1,5 @@
 package dto
 
-type ProfileReportDTO struct {
+type ReportDTO struct {
 	Cause string `json:"cause"`
 }
