@@ -32,7 +32,9 @@ func (s *CommentsService) CreateComment(ctx context.Context, postId, userId stri
 		ParentID: comment.ParentID,
 		Body:     comment.Body,
 	}
-	s.repo.CreateComment(ctx, &comm)
+	if err := s.repo.CreateComment(ctx, &comm); err != nil {
+		return fmt.Errorf("s.repo.CreateComment: %w", err)
+	}
 	return nil
 }
 
