@@ -10,6 +10,7 @@ import (
 
 	"github.com/BitCoinOffical/forgehost/auth-service/config"
 	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
+	kafkaconn "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/kafka"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/migrations"
 	postgresdb "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/postgres"
 	redisdb "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/redis"
@@ -90,9 +91,13 @@ func main() {
 	}
 	logger.Info("migrations applied successfully")
 
+	writer := kafkaconn.NewKafkaConn(&kafkaconn.KafkaConn{
+		Addr: cfg.Kafka.Addr,
+	})
+
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
-	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, rc, logger)
+	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, rc, logger, writer)
 	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
 		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
 		ClientID:     cfg.WebGoogle.WebClientID,
@@ -121,8 +126,13 @@ func main() {
 	postgresdb.ClosePool(pool)
 	logger.Info("pool closesd")
 
+	if err := kafkaconn.KafkaClose(writer); err != nil {
+		logger.Fatal("failed close kafka", zap.Error(err))
+	}
+	logger.Info("kafka closed")
+
 	if err := serv.ShutDown(shutdownCtx); err != nil {
-		log.Fatalf("shutdown error: %v", err)
+		logger.Fatal("shutdown error", zap.Error(err))
 	}
 	logger.Info("server shut down")
 }

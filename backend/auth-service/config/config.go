@@ -18,8 +18,13 @@ type Config struct {
 	WebGoogle    WebGoogleConfig
 	Postgres     PostgresConfig
 	RabbitMQ     RabbitConfig
+	Kafka        KafkaConfig
 	Redis        RedisConfig
 	App          AppConfig
+}
+
+type KafkaConfig struct {
+	Addr string `env:"KAFKA_ADDR,required"`
 }
 
 type RabbitConfig struct {
@@ -69,6 +74,10 @@ func NewLoad() (*Config, error) {
 	var cfg Config
 
 	if err := env.Parse(&cfg.App); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Kafka); err != nil {
 		return nil, err
 	}
 

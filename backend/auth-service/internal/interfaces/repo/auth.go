@@ -1,16 +1,21 @@
 package repo
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"context"
 	"errors"
 	"fmt"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	unique_violation = "23505"
 )
 
 type AuthRepo struct {
@@ -39,7 +44,7 @@ func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User,
 func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 
-	sql := `SELECT id, email_verified, password_hash FROM users WHERE email = $1`
+	sql := `SELECT id, email_verified, password_hash, updated_at, created_at FROM users WHERE email = $1`
 
 	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash)
 	if err != nil {
@@ -59,7 +64,7 @@ func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, e
 
 	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&id); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return uuid.Nil, fmt.Errorf("email alredy exists: %w", domain.ErrEmailAlreadyExists)
 		}
 		return uuid.Nil, fmt.Errorf("r.pool.QueryRow: %w", err)
@@ -110,6 +115,10 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 		(user_id, provider, provider_user_id, given_name, family_name)
 		VALUES ($1, $2, $3, $4, $5)
 		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return uuid.Nil, fmt.Errorf("oauth account already linked: %w", domain.ErrEmailAlreadyExists)
+		}
 		return uuid.Nil, fmt.Errorf("tx.Exec: %w", err)
 	}
 
