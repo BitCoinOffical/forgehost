@@ -19,7 +19,7 @@ func NewCommentsRepo(pool *pgxpool.Pool) *CommentsRepo {
 
 func (r *CommentsRepo) ListComments(ctx context.Context, postId string) ([]models.FeedComments, error) {
 	sql := `SELECT 
-	c.*,
+	c.post_id, c.user_id, c.parent_id, c.body,
 	(SELECT COUNT(*) FROM comment_likes WHERE post_id = c.id) AS likes,
 	(SELECT COUNT(*) FROM comments WHERE parent_id = c.id) AS count_comments
 	FROM comments c WHERE c.post_id = $1`
