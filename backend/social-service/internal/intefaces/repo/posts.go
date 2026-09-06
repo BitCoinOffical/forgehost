@@ -33,7 +33,7 @@ func (r *PostsRepo) GetPostById(ctx context.Context, id string) (*models.FeedPos
 		ps.views,
 	(SELECT title FROM topics WHERE p.topic_id = id) AS topic_title, 
 	(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
-	FROM profiles p LEFT JOIN posts ps ON p.user_id = ps.user_id`
+	FROM profiles p LEFT JOIN posts ps ON p.user_id = ps.user_id WHERE ps.id = $1 AND is_delete = false`
 	var post models.FeedPost
 	if err := r.pool.QueryRow(ctx, sql, id).Scan(
 		&post.Username,
@@ -178,7 +178,7 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context) ([]models.FeedPost, erro
 			ps.description, 
 			ps.views,
 			(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count,
-			(SELECT title FROM topics WHERE p.topic_id = id) AS topic_title
+			(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title
 			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id
             ORDER BY ps.created_at DESC
 			LIMIT 1000;
@@ -192,15 +192,15 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context) ([]models.FeedPost, erro
 		var fd models.FeedPost
 		if err := rows.Scan(
 			&fd.Username,
-			&fd.TopicName,
 			&fd.AvatarURL,
-			&fd.ImageURL,
-			&fd.Description,
 			&fd.PostID,
 			&fd.TopicID,
 			&fd.UserID,
+			&fd.ImageURL,
+			&fd.Description,
 			&fd.Views,
 			&fd.LikeCount,
+			&fd.TopicName,
 		); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
@@ -235,10 +235,10 @@ func (r *PostsRepo) GetTopics(ctx context.Context) ([]models.Topics, error) {
 	return tpcs, nil
 }
 
-func (r *PostsRepo) GetTopicsByID(ctx context.Context) (*models.Topics, error) {
+func (r *PostsRepo) GetTopicsByID(ctx context.Context, id string) (*models.Topics, error) {
 	sql := `SELECT * FROM topics WHERE is_delete = false AND id = $1`
 	var tpc models.Topics
-	if err := r.pool.QueryRow(ctx, sql).Scan(&tpc.ID, &tpc.Title, &tpc.IsDeleted, &tpc.CreatedAt, &tpc.UpdatedAt); err != nil {
+	if err := r.pool.QueryRow(ctx, sql, id).Scan(&tpc.ID, &tpc.Title, &tpc.IsDeleted, &tpc.CreatedAt, &tpc.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
