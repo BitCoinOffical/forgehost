@@ -178,7 +178,7 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context) ([]models.FeedPost, erro
 			ps.description, 
 			ps.views,
 			(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count,
-			(SELECT title FROM topics WHERE p.topic_id = id) AS topic_title,
+			(SELECT title FROM topics WHERE p.topic_id = id) AS topic_title
 			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id
             ORDER BY ps.created_at DESC
 			LIMIT 1000;
@@ -249,7 +249,7 @@ func (r *PostsRepo) GetTopicsByID(ctx context.Context) (*models.Topics, error) {
 }
 
 func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
-	sql := `INSERT INTO posts (topic_id, user_id, image_url, description) VALUES $1, $2, $3, $4`
+	sql := `INSERT INTO posts (topic_id, user_id, image_url, description) VALUES ($1, $2, $3, $4)`
 	_, err := r.pool.Exec(ctx, sql, post.TopicId, post.UserID, post.ImageURL, post.Description)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -264,31 +264,35 @@ func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
 func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*models.Post, error) {
 	builder := squirrel.Update("posts").
 		Where(squirrel.Eq{"id": post.ID}, squirrel.Eq{"user_id": post.UserID}).
-		PlaceholderFormat(squirrel.Dollar).
-		Suffix("RETURNING topic_id, user_id, image_url, description")
+		Set("updated_at", squirrel.Expr("NOW()"))
 
 	if post.ImageURL != nil {
-		builder.Set("image_url", post.ImageURL)
+		builder = builder.Set("image_url", *post.ImageURL)
 	}
 
 	if post.Description != nil {
-		builder.Set("description", post.Description)
+		builder = builder.Set("description", *post.Description)
 	}
 
-	builder.Set("updated_at", squirrel.Expr("NOW()"))
-
-	query, args, err := builder.ToSql()
+	query, args, err := builder.
+		Suffix("RETURNING topic_id, user_id, image_url, description").
+		PlaceholderFormat(squirrel.Dollar).
+		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("builder.ToSql: %w", err)
 	}
 
 	var resp models.Post
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(&post.TopicId, &post.UserID, &post.ImageURL, &post.Description); err != nil {
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&resp.TopicId,
+		&resp.UserID,
+		&resp.ImageURL,
+		&resp.Description,
+	); err != nil {
 		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
 
 	return &resp, nil
-
 }
 
 func (r *PostsRepo) DeletePost(ctx context.Context, postId string, userId string) error {
@@ -304,7 +308,7 @@ func (r *PostsRepo) DeletePost(ctx context.Context, postId string, userId string
 }
 
 func (r *PostsRepo) ReportPost(ctx context.Context, report *models.PostReport) error {
-	sql := `INSERT INTO post_reports (user_id, post_id, cause) VALUES $1, $2, $3`
+	sql := `INSERT INTO post_reports (user_id, post_id, cause) VALUES ($1, $2, $3)`
 	_, err := r.pool.Exec(ctx, sql, report.UserId, report.PostId, report.Cause)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -318,7 +322,7 @@ func (r *PostsRepo) ReportPost(ctx context.Context, report *models.PostReport) e
 }
 
 func (r *PostsRepo) LikePost(ctx context.Context, userId, postId string) error {
-	sql := `INSER INTO post_likes (user_id, post_id) VALUES ($1, $2)`
+	sql := `INSERT INTO post_likes (user_id, post_id) VALUES ($1, $2)`
 	_, err := r.pool.Exec(ctx, sql, userId, postId)
 	if err != nil {
 		var pgErr *pgconn.PgError
