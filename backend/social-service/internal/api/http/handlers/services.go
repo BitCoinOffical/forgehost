@@ -10,8 +10,9 @@ import (
 )
 
 type Services struct {
-	profile *services.ProfileService
-	post    *services.PostsService
+	profile  *services.ProfileService
+	post     *services.PostsService
+	commSrvc *services.CommentsService
 }
 
 func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
@@ -21,16 +22,21 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
 	postrdb := cache.NewCache(rdb)
 	postrepo := repo.NewPostsRepo(pool)
 	post := services.NewPostsService(postrepo, postrdb)
-	return &Services{profile: profile, post: post}
+
+	commRepo := repo.NewCommentsRepo(pool)
+	commSrvc := services.NewCommentsService(commRepo)
+	return &Services{profile: profile, post: post, commSrvc: commSrvc}
 }
 
 type Handlers struct {
-	Profile *ProfileHandler
-	Posts   *PostHandler
+	Profile  *ProfileHandler
+	Posts    *PostHandler
+	Comments *CommentHandler
 }
 
 func NewHandlers(srvc *Services, logger *zap.Logger) *Handlers {
 	profile := NewProfileHandler(srvc.profile, logger)
 	posts := NewPostHandler(srvc.post, logger)
-	return &Handlers{Profile: profile, Posts: posts}
+	comments := NewCommentHandler(srvc.commSrvc, logger)
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments}
 }
