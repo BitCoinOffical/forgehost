@@ -1,5 +1,5 @@
 resource "kafka_topic" "name" {
-    name = ""
+    name = "user.social"
     partitions = 4
     replication_factor = 1
 
