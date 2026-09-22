@@ -10,6 +10,7 @@ import (
 	_ "github.com/BitCoinOffical/forgehost/auth-service/docs"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/handlers"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -48,6 +49,8 @@ func (s *Server) Run() error {
 	auth := api.Group("/auth")
 	auth.Use(s.m.RateLimiter())
 	{
+		auth.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 		auth.POST("/register", s.h.Auth.Register)
 		auth.POST("/login", s.h.Auth.Login)
 		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Auth.Logout)
