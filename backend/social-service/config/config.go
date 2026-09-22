@@ -46,8 +46,8 @@ type RedisConfig struct {
 
 type AppConfig struct {
 	DebugLevel string `env:"DEBUG_LEVEL,required"`
-	Port       string `env:"JWT_SECRET,required"`
-	Secret     string `env:"PORT,required"`
+	Secret     string `env:"JWT_SECRET,required"`
+	Port       string `env:"PORT,required"`
 }
 
 func NewLoad() (*Config, error) {
