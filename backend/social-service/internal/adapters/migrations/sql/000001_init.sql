@@ -25,6 +25,14 @@ CREATE TABLE IF NOT EXISTS blocks(
     FOREIGN KEY (target_id) REFERENCES profiles(user_id)
 );
 
+CREATE TABLE IF NOT EXISTS topics (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR UNIQUE NOT NULL,
+    is_delete BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
     user_id    UUID  NOT NULL,
     target_user_id  UUID,
@@ -42,17 +50,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     )
 );
 
-CREATE TABLE IF NOT EXISTS topics (
-    id BIGSERIAL PRIMARY KEY,
-    title VARCHAR UNIQUE NOT NULL,
-    is_delete BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS posts(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    topic_id UUID,
+    topic_id BIGINT NULL,
     user_id UUID NOT NULL,
     image_url TEXT,
     description VARCHAR,
