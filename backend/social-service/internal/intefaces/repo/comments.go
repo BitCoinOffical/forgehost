@@ -19,7 +19,12 @@ func NewCommentsRepo(pool *pgxpool.Pool) *CommentsRepo {
 
 func (r *CommentsRepo) ListComments(ctx context.Context, postId string) ([]models.FeedComments, error) {
 	sql := `SELECT 
-	c.post_id, c.user_id, c.parent_id, c.body,
+	c.id, 
+	c.post_id, 
+	c.user_id, 
+	c.parent_id, 
+	c.body, 
+	c.created_at,
 	(SELECT COUNT(*) FROM comment_likes WHERE post_id = c.id) AS likes,
 	(SELECT COUNT(*) FROM comments WHERE parent_id = c.id) AS count_comments
 	FROM comments c WHERE c.post_id = $1`
@@ -30,7 +35,7 @@ func (r *CommentsRepo) ListComments(ctx context.Context, postId string) ([]model
 	var coments []models.FeedComments
 	for rows.Next() {
 		var coment models.FeedComments
-		if err := rows.Scan(&coment.PostID, &coment.UserID, &coment.ParentID, &coment.Body, &coment.Likes, &coment.CountComments); err != nil {
+		if err := rows.Scan(&coment.ID, &coment.PostID, &coment.UserID, &coment.ParentID, &coment.Body, &coment.CreatedAt, &coment.Likes, &coment.CountComments); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 		coments = append(coments, coment)
@@ -67,7 +72,7 @@ func (r *CommentsRepo) CreateComment(ctx context.Context, comment *models.Commen
 }
 
 func (r *CommentsRepo) UpdateComment(ctx context.Context, comment *models.Comments) (*models.Comments, error) {
-	sql := `UPDATE comments SET body = $1 WHERE user_id = $2 AND post_id = $3 AND comment_id = $4 
+	sql := `UPDATE comments SET body = $1 WHERE user_id = $2 AND post_id = $3 AND id = $4 
 	RETURNING id, post_id, user_id, parent_id, body`
 	var cmt models.Comments
 	if err := r.pool.QueryRow(ctx, sql, comment.Body, comment.UserID, comment.PostID, comment.ID).Scan(
@@ -83,7 +88,7 @@ func (r *CommentsRepo) UpdateComment(ctx context.Context, comment *models.Commen
 }
 
 func (r *CommentsRepo) DeleteComment(ctx context.Context, comment *models.Comments) error {
-	sql := `DELETE FROM comments WHERE user_id = $1 AND post_id = $2 AND comment_id = $3`
+	sql := `DELETE FROM comments WHERE user_id = $1 AND post_id = $2 AND id = $3`
 	_, err := r.pool.Exec(ctx, sql, comment.UserID, comment.PostID, comment.ID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
