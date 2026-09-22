@@ -1,7 +1,15 @@
 package dto
 
+type ExchangeRequestDTO struct {
+	Code string `json:"code"`
+}
+
 type TokensDTO struct {
 	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type UpdateTokensDTO struct {
 	RefreshToken string `json:"refresh_token"`
 }
 

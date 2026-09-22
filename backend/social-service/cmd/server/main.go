@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/BitCoinOffical/forgehost/social-service/config"
+	_ "github.com/BitCoinOffical/forgehost/social-service/docs"
 	kafkaread "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/kafka"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/migrations"
 	postgresdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/postgres"
@@ -21,6 +22,22 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	logPath = "logs/social.log"
+)
+
+// @title Social Service API
+// @version 1.0
+// @description API service for a social networking service
+// @termsOfService http://swagger.io/terms/
+
+// @host localhost:8084
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -30,16 +47,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel)
+	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel, logPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	logger.Info("config load")
 	logger.Info("logger load")
 
-	reader := kafkaread.NewKafkaReaвer(&kafkaread.KafkaConfig{
+	client, err := kafkaread.NewKafkaClient(&kafkaread.KafkaConfig{
 		Addr: cfg.Kafka.Addr,
 	})
+	if err != nil {
+		logger.Fatal("kafka client failed", zap.Error(err))
+	}
 	logger.Info("kafka reader applied successfully")
 
 	pool, err := postgresdb.NewPool(&postgresdb.PostgresConfig{
@@ -82,12 +102,12 @@ func main() {
 	logger.Info("redis for rate limitter applied successfully")
 
 	srv := consumers.NewServices(pool)
-	cons := consumers.NewConsumers(srv, reader, logger)
+	cons := consumers.NewConsumers(srv, client, logger)
 
 	go func() {
-		errs := cons.Profile.Run(context.Background())
+		errs := cons.Profile.Run(ctx)
 		for err := range errs {
-			logger.Error("Profile run error", zap.Error(err))
+			logger.Error("cons.Profile.Run:", zap.Error(err))
 		}
 	}()
 
@@ -102,17 +122,25 @@ func main() {
 		Secret:     cfg.App.Secret,
 	}, m, h)
 
+	go func() {
+		if err := serv.Run(); err != nil {
+			logger.Fatal("failed start server", zap.Error(err))
+		}
+	}()
+
 	<-ctx.Done()
-	if err := kafkaread.KafkaClose(reader); err != nil {
-		logger.Fatal("failed close kafka", zap.Error(err))
-	}
+
+	kafkaread.KafkaClose(client)
 	logger.Info("kafka closed")
 
 	if err := serv.ShutDown(ctx); err != nil {
-		logger.Fatal("failed shut down server", zap.Error(err))
+		logger.Error("failed shut down server", zap.Error(err))
 	}
 	logger.Info("kafka closed")
 
 	postgresdb.ClosePool(pool)
 	logger.Info("pool closed")
+
+	cache.Close()
+	rate.Close()
 }

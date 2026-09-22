@@ -3,7 +3,7 @@ package kafkaread
 import (
 	"fmt"
 
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 const (
@@ -15,19 +15,19 @@ type KafkaConfig struct {
 	Addr string
 }
 
-func NewKafkaReaвer(cfg *KafkaConfig) *kafka.Reader {
-	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{cfg.Addr},
-		Topic:   topic,
-		GroupID: groupID,
-	})
+func NewKafkaClient(cfg *KafkaConfig) (*kgo.Client, error) {
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(cfg.Addr),
+		kgo.ConsumerGroup(groupID),
+		kgo.ConsumeTopics(topic),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kgo.NewClient: %w", err)
+	}
 
-	return reader
+	return client, nil
 }
 
-func KafkaClose(reader *kafka.Reader) error {
-	if err := reader.Close(); err != nil {
-		return fmt.Errorf("reader.Close: %v", err)
-	}
-	return nil
+func KafkaClose(client *kgo.Client) {
+	client.Close()
 }

@@ -13,7 +13,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	redirect_url = "http://localhost:3000/oauth/callback?code="
+)
+
+// GoogleLogin godoc
+// @Summary      Start Google OAuth login (web)
+// @Description  Redirects the browser to Google's consent screen. Sets an "oauth_state" CSRF-protection cookie.
+// @Tags         auth
+// @Produce      json
+// @Success      307  "redirect to Google consent screen"
+// @Failure      500  {object}  map[string]string
+// @Router       /auth/login/google [get]
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	authRequestsTotal.Inc()
 	oauthState, err := jwtpkg.GenerateRandomString()
 	if err != nil {
 		response.InternalServerError(c, err, "failed generate session id", h.logger)
@@ -34,7 +47,22 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, u)
 }
 
+// GoogleCallback godoc
+// @Summary      Google OAuth callback (web)
+// @Description  Handles Google's redirect after consent, validates state, exchanges the code, fetches the Google profile, then redirects to the frontend with a short-lived one-time exchange code.
+// @Tags         auth
+// @Produce      json
+// @Param        state  query  string  true  "OAuth state, must match the oauth_state cookie"
+// @Param        code   query  string  true  "Authorization code issued by Google"
+// @Success      307  "redirect to frontend with one-time exchange code"
+// @Failure      400  {object}  map[string]string  "invalid state or empty code"
+// @Failure      401  {object}  map[string]string  "failed to exchange code for token"
+// @Failure      403  {object}  map[string]string  "google email not verified"
+// @Failure      500  {object}  map[string]string
+// @Failure      502  {object}  map[string]string  "userinfo request failed"
+// @Router       /auth/login/google/callback [get]
 func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+	authRequestsTotal.Inc()
 	storedId, err := c.Cookie("oauth_state")
 	if err != nil || c.Query("state") != storedId {
 		response.BadRequest(c, err, "invalid state", h.logger)
@@ -87,15 +115,57 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.GoogleCallback(c.Request.Context(), &req)
+	oauthCode, err := h.authsrvc.GoogleCallback(c.Request.Context(), &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed to register", h.logger)
 		return
 	}
 
+	c.Redirect(http.StatusTemporaryRedirect, redirect_url+oauthCode)
+}
+
+// Exchange godoc
+// @Summary      Exchange one-time OAuth code for tokens
+// @Description  Called by the frontend right after the Google OAuth redirect. Exchanges the short-lived one-time code (from the callback redirect) for a real access/refresh token pair.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dto.ExchangeRequestDTO  true  "One-time exchange code"
+// @Success      200      {object}  dto.TokensDTO
+// @Failure      400      {object}  map[string]string  "invalid body"
+// @Failure      500      {object}  map[string]string
+// @Router       /auth/exchange [post]
+func (h *AuthHandler) Exchange(c *gin.Context) {
+	authRequestsTotal.Inc()
+	var req dto.ExchangeRequestDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	tokens, err := h.authsrvc.Exchange(c.Request.Context(), &req)
+	if err != nil {
+		response.InternalServerError(c, err, "failed get tokens", h.logger)
+		return
+	}
+
 	c.JSON(http.StatusOK, tokens)
 }
+
+// GoogleLoginAndroid godoc
+// @Summary      Log in with Google (Android)
+// @Description  Verifies a Google ID token obtained natively on Android and returns an access/refresh token pair.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dto.GoogleAndroidUserDTO  true  "Google ID token"
+// @Success      200      {object}  dto.TokensDTO
+// @Failure      400      {object}  map[string]string  "invalid body"
+// @Failure      401      {object}  map[string]string  "invalid google token"
+// @Failure      500      {object}  map[string]string
+// @Router       /auth/login/google [post]
 func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.GoogleAndroidUserDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

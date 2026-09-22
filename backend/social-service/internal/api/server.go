@@ -10,6 +10,9 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/http/handlers"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 const (
@@ -38,11 +41,15 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 }
 
 func (s *Server) Run() error {
+	s.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	api := s.engine.Group("/api/v1")
 	social := api.Group("/social")
 	social.Use(s.m.AuthMiddleware())
 	social.Use(s.m.RateLimiter())
 	{
+		social.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 		social.GET("/profile/me", s.h.Profile.Me)
 		social.GET("/profile/:user_id", s.h.Profile.GetProfileByID)
 		social.PATCH("/profile", s.h.Profile.UpdateProfile)
@@ -53,6 +60,7 @@ func (s *Server) Run() error {
 		social.POST("/profile/:user_id/report", s.h.Profile.Report)
 
 		social.GET("/posts", s.h.Posts.GetSubPosts)
+		social.GET("/posts/global", s.h.Posts.GetGlobalPosts)
 		social.GET("/posts/global/:cursor", s.h.Posts.GetGlobalPosts)
 		social.GET("/posts/:post_id", s.h.Posts.GetByID)
 		social.POST("/posts", s.h.Posts.CreatePost)
@@ -63,7 +71,7 @@ func (s *Server) Run() error {
 		social.POST("/posts/:post_id/like", s.h.Posts.Like)
 		social.DELETE("/posts/:post_id/like", s.h.Posts.Unlike)
 
-		social.GET("/posts/:post_id/comments", s.h.Comments.Like)
+		social.GET("/posts/:post_id/comments", s.h.Comments.List)
 		social.POST("/posts/:post_id/comments", s.h.Comments.Create)
 		social.PUT("/posts/:post_id/comments/:comment_id", s.h.Comments.Update)
 		social.POST("/posts/:post_id/comments/:comment_id/report", s.h.Comments.Report)

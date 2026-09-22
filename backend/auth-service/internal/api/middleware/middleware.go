@@ -1,10 +1,11 @@
 package middleware
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
-	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"net/http"
 	"strings"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 
 	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
@@ -66,7 +67,7 @@ func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 
 func (m *Middleware) RateLimiter() gin.HandlerFunc {
 
-	rate, err := limiter.NewRateFromFormatted("5-M")
+	rate, err := limiter.NewRateFromFormatted("10-M")
 	if err != nil {
 		logger.Fatal("limiter.NewRateFromFormatted", zap.Error(err))
 	}

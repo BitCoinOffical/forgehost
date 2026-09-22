@@ -7,7 +7,7 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/services"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -19,7 +19,7 @@ type Services struct {
 	Service *services.AuthService
 }
 
-func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool, WebGoogleClientID string, rc *rabbitmq.ResilientConnection, logger *zap.Logger, writer *kafka.Writer) *Services {
+func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.Pool, WebGoogleClientID string, rc *rabbitmq.ResilientConnection, logger *zap.Logger, client *kgo.Client) *Services {
 	queue := rabbitqueue.NewQueue(rc)
 
 	codeStore := store.NewCodeStore(rdb)
@@ -28,7 +28,7 @@ func NewServices(manager *jwtpkg.ManagerToken, rdb *redis.Client, pool *pgxpool.
 	userStore := store.NewUserStore(rdb)
 
 	repo := repo.NewAuthRepo(pool)
-	service := services.NewAuthService(repo, manager, codeStore, resendStore, sessionStore, userStore, WebGoogleClientID, queue, logger, writer)
+	service := services.NewAuthService(repo, manager, codeStore, resendStore, sessionStore, userStore, WebGoogleClientID, queue, logger, client)
 	return &Services{Service: service}
 }
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
@@ -13,7 +12,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
-	"github.com/bytedance/gopkg/util/logger"
+	"github.com/BitCoinOffical/forgehost/auth-service/pkg/mask"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -60,7 +60,11 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		Email: user.Email,
 	}
 
-	code := rand.Intn(900000) + 100000
+	code, err := jwtpkg.GenerateSecureCode()
+	if err != nil {
+		return nil, fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
+	}
+
 	if err := s.codeStore.SaveVerificationCode(ctx, randStr, code, VerificationTTL); err != nil {
 		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
@@ -86,7 +90,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req *dto.UsersRegisterDT
 		return nil, fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
-	logger.Info("verification code send")
+	s.logger.Debug("verification code sent", zap.String("email", mask.Email(req.Email)))
 	return &dto.PendingKeyDTO{
 		PendingKey: randStr,
 	}, nil

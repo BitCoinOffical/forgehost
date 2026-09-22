@@ -3,29 +3,23 @@ package kafkaconn
 import (
 	"fmt"
 
-	"github.com/segmentio/kafka-go"
-)
-
-const (
-	topic = "user.social"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 type KafkaConn struct {
 	Addr string
 }
 
-func NewKafkaConn(cfg *KafkaConn) *kafka.Writer {
-	writer := &kafka.Writer{
-		Addr:     kafka.TCP(cfg.Addr),
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+func NewKafkaClient(cfg *KafkaConn) (*kgo.Client, error) {
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(cfg.Addr),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("kgo.NewClient: %w", err)
 	}
-	return writer
+	return client, nil
 }
 
-func KafkaClose(writer *kafka.Writer) error {
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf("writer.Close: %w", err)
-	}
-	return nil
+func KafkaClose(client *kgo.Client) {
+	client.Close()
 }

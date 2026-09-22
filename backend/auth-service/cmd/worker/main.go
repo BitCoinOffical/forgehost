@@ -19,6 +19,7 @@ import (
 
 const (
 	maxWorkers = 4
+	logPath    = "logs/auth-worker.log"
 )
 
 func main() {
@@ -30,7 +31,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel)
+	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel, logPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func main() {
 	logger.Info("successful connection grpc notificatin")
 
 	Work := sender.NewWorker(logger, client, rc)
-	Errs := Work.WorkerPool(maxWorkers)
+	Errs := Work.WorkerPool(ctx, maxWorkers)
 	for err := range Errs {
 		logger.Error("worker error", zap.Error(err))
 	}

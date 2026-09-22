@@ -10,7 +10,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Creates a pending registration and sends a verification code to the provided email. Returns a pending key used to confirm the email in /verify-email.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dto.UsersRegisterDTO  true  "Registration payload"
+// @Success      201      {object}  dto.PendingKeyDTO
+// @Failure      400      {object}  map[string]string  "invalid body or passwords do not match"
+// @Failure      409      {object}  map[string]string  "email already exists"
+// @Failure      500      {object}  map[string]string
+// @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.UsersRegisterDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

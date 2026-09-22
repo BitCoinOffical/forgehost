@@ -27,7 +27,13 @@ func NewCache(rdb *redis.Client) *Cache {
 
 func (c *Cache) SetGlobal(ctx context.Context, value []models.FeedPost, cursor string) error {
 	key := postKey + cursor
-	if err := c.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
+
+	data, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("json.Marshal: %w", err)
+	}
+
+	if err := c.rdb.Set(ctx, key, data, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
 	}
 	return nil

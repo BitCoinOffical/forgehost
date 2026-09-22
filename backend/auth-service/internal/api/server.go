@@ -1,13 +1,18 @@
 package api
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/config"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/handlers"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
 	"context"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/config"
+	_ "github.com/BitCoinOffical/forgehost/auth-service/docs"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/handlers"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,10 +43,14 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 }
 
 func (s *Server) Run() error {
+	s.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	api := s.engine.Group("/api/v1")
 	auth := api.Group("/auth")
 	auth.Use(s.m.RateLimiter())
 	{
+		auth.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
 		auth.POST("/register", s.h.Auth.Register)
 		auth.POST("/login", s.h.Auth.Login)
 		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Auth.Logout)
@@ -59,6 +68,8 @@ func (s *Server) Run() error {
 		auth.POST("/password/reset", s.h.Auth.PasswordReset)
 		auth.POST("/password/reset/confirm", s.h.Auth.ConfirmPasswordReset)
 		auth.POST("/password/reset/resend", s.h.Auth.PasswordResetResend)
+
+		auth.POST("/exchange", s.h.Auth.Exchange)
 	}
 
 	return s.server.ListenAndServe()

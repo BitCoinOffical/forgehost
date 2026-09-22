@@ -7,6 +7,11 @@ import (
 	"go.uber.org/zap"
 )
 
+// ErrorBody represents API error response
+type ErrorBody struct {
+	Error string `json:"error"`
+}
+
 func Unauthorized(c *gin.Context, err error, msg string, logger *zap.Logger) {
 	logger.Error(msg, zap.Error(err), zap.String("patch", c.FullPath()))
 	c.JSON(http.StatusUnauthorized, gin.H{

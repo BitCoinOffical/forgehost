@@ -10,13 +10,17 @@ import (
 	loggerpkg "github.com/BitCoinOffical/forgehost/notification-service/pkg/logger"
 )
 
+const (
+	logPath = "logs/notofication.log"
+)
+
 func main() {
 	cfg, err := config.NewLoad()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel)
+	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel, logPath)
 	if err != nil {
 		log.Fatalf("failed to create logger: %v", err)
 	}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/Masterminds/squirrel"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +33,7 @@ func (r *PostsRepo) GetPostById(ctx context.Context, id string) (*models.FeedPos
 		ps.image_url,
 		ps.description,
 		ps.views,
-	(SELECT title FROM topics WHERE p.topic_id = id) AS topic_title, 
+	(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
 	(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
 	FROM profiles p LEFT JOIN posts ps ON p.user_id = ps.user_id WHERE ps.id = $1 AND is_delete = false`
 	var post models.FeedPost
@@ -167,7 +169,7 @@ ORDER BY ps.created_at DESC LIMIT 10;
 	return sublists, subtopics, nil
 }
 
-func (r *PostsRepo) GetGlobalPosts(ctx context.Context) ([]models.FeedPost, error) {
+func (r *PostsRepo) GetGlobalPosts(ctx context.Context, postId *uuid.UUID, createdAt *time.Time) ([]models.FeedPost, error) {
 	sql := `SELECT 
 			p.username,
 			p.avatar_url,
@@ -179,15 +181,20 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context) ([]models.FeedPost, erro
 			ps.views,
 			(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count,
 			(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title
-			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id
-            ORDER BY ps.created_at DESC
-			LIMIT 1000;
+			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id 
+			WHERE (
+			($1::timestamptz IS NULL AND $2::uuid IS NULL)
+			OR 
+			(ps.created_at, ps.id) < ($1, $2)
+			)
+            ORDER BY ps.created_at DESC, id DESC
+			LIMIT 10;
 	`
-	rows, err := r.pool.Query(ctx, sql)
+	rows, err := r.pool.Query(ctx, sql, createdAt, postId)
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Query: %w", err)
 	}
-	var fds []models.FeedPost
+	fds := make([]models.FeedPost, 0)
 	for rows.Next() {
 		var fd models.FeedPost
 		if err := rows.Scan(

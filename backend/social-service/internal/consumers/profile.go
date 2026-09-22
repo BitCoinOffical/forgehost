@@ -2,13 +2,13 @@ package consumers
 
 import (
 	"context"
-	"encoding/json"
+	v2 "encoding/json/v2"
 	"fmt"
 	"sync"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 )
 
@@ -17,13 +17,13 @@ const (
 )
 
 type Consumer struct {
-	reader  *kafka.Reader
+	client  *kgo.Client
 	logger  *zap.Logger
 	service *services.ProfileService
 }
 
-func NewConsumer(reader *kafka.Reader, logger *zap.Logger, service *services.ProfileService) *Consumer {
-	return &Consumer{reader: reader, logger: logger, service: service}
+func NewConsumer(client *kgo.Client, logger *zap.Logger, service *services.ProfileService) *Consumer {
+	return &Consumer{client: client, logger: logger, service: service}
 }
 
 func (k *Consumer) Run(ctx context.Context) <-chan error {
@@ -31,26 +31,32 @@ func (k *Consumer) Run(ctx context.Context) <-chan error {
 	errs := make(chan error)
 	for i := range consumerCount {
 		wg.Go(func() {
-			k.logger.Info("consumer started", zap.Int("num", i))
+			k.logger.Info("consumer started", zap.Int("num", i+1))
 			for {
-				msg, err := k.reader.ReadMessage(ctx)
-				if err != nil {
-					errs <- fmt.Errorf("k.reader.ReadMessage: %w", err)
-					break
-				}
-
-				var event dto.UserProfileDTO
-				if err := json.Unmarshal(msg.Value, &event); err != nil {
-					errs <- fmt.Errorf("json.Unmarshal: %w", err)
+				fetches := k.client.PollFetches(ctx)
+				if fetErrs := fetches.Errors(); len(errs) > 0 {
+					for _, e := range fetErrs {
+						errs <- fmt.Errorf("k.client.PollFetches: %w", e.Err)
+						k.logger.Error("fetch error", zap.String("topic", e.Topic), zap.Int32("partition", e.Partition), zap.Error(e.Err))
+					}
 					continue
 				}
 
-				if err := k.service.SaveProfile(ctx, &event); err != nil {
-					errs <- fmt.Errorf("k.service.SaveUserProfile: %w", err)
-					continue
-				}
+				fetches.EachRecord(func(r *kgo.Record) {
+					var event dto.UserProfileDTO
+					if err := v2.Unmarshal(r.Value, &event); err != nil {
+						errs <- fmt.Errorf("v2.Unmarshal: %w", err)
+						return
+					}
+					k.logger.Debug("event data from kafka", zap.Any("user_id", event))
 
-				k.logger.Info("data successfully received.", zap.Int("num", i))
+					if err := k.service.SaveProfile(ctx, &event); err != nil {
+						errs <- fmt.Errorf("k.service.SaveUserProfile: %w", err)
+						return
+					}
+
+					k.logger.Info("data successfully received.", zap.Int("num", i))
+				})
 			}
 		})
 	}

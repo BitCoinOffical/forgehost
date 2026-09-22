@@ -12,8 +12,10 @@ import (
 )
 
 const (
-	codeKey  = "code:"
-	resetKey = "reset:"
+	codeKey      = "code:"
+	resetKey     = "reset:"
+	oauthKey     = "oauth_code:"
+	oauthCodeTTL = 60 * time.Second
 )
 
 type CodeStore struct {
@@ -36,6 +38,31 @@ func (s *CodeStore) SaveResetPasswordCode(ctx context.Context, randStr string, v
 	key := resetKey + randStr
 	if err := s.rdb.Set(ctx, key, value, expiration).Err(); err != nil {
 		return fmt.Errorf("c.rdb.Set: %w", err)
+	}
+	return nil
+}
+
+func (s *CodeStore) SaveOauthCode(ctx context.Context, oauthCode, id string) error {
+	key := oauthKey + oauthCode
+	if err := s.rdb.Set(ctx, key, id, oauthCodeTTL).Err(); err != nil {
+		return fmt.Errorf("c.rdb.Set: %w", err)
+	}
+	return nil
+}
+
+func (s *CodeStore) GetOauthCode(ctx context.Context, oauthCode string) (string, error) {
+	key := oauthKey + oauthCode
+	userId, err := s.rdb.Get(ctx, key).Result()
+	if err != nil {
+		return "", fmt.Errorf("c.rdb.Get: %w", err)
+	}
+	return userId, nil
+}
+
+func (s *CodeStore) DeleteOauthCode(ctx context.Context, oauthCode string) error {
+	key := oauthKey + oauthCode
+	if err := s.rdb.Del(ctx, key).Err(); err != nil {
+		return fmt.Errorf("c.rdb.Det: %w", err)
 	}
 	return nil
 }

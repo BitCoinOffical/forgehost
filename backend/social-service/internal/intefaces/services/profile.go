@@ -17,29 +17,31 @@ func NewProfileService(repo *repo.ProfileRepo) *ProfileService {
 	return &ProfileService{repo: repo}
 }
 
-func (s *ProfileService) GetProfileByID(ctx context.Context, id string) (*models.Profile, error) {
-	resp, err := s.repo.GetProfileByID(ctx, id)
+func (s *ProfileService) GetProfileByID(ctx context.Context, id string) (*models.ProfileResponse, error) {
+	prof, fds, err := s.repo.GetProfileByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.GetProfileByID: %w", err)
 	}
 
-	return resp, nil
+	resp := models.ProfileResponse{
+		Profile: *prof,
+		Posts:   fds,
+	}
+
+	return &resp, nil
 }
 
 func (s *ProfileService) SaveProfile(ctx context.Context, event *dto.UserProfileDTO) error {
-	profile := models.Profile{
-		UserID: event.UserID,
-	}
-
-	if err := s.repo.SaveProfile(ctx, &profile); err != nil {
+	if err := s.repo.SaveProfile(ctx, event.UserID); err != nil {
 		return fmt.Errorf("s.repo.SaveUserProfile: %w", err)
 	}
 
 	return nil
 }
 
-func (s *ProfileService) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO) (*models.Profile, error) {
+func (s *ProfileService) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO, id string) (*models.Profile, error) {
 	profile := models.Profile{
+		UserID:    id,
 		UserName:  &req.UserName,
 		Bio:       &req.Bio,
 		AvatarUrl: &req.AvatarUrl,

@@ -2,50 +2,66 @@ package services
 
 import (
 	"context"
+	v2 "encoding/json/v2"
 	"fmt"
 
 	"cloud.google.com/go/auth/credentials/idtoken"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	"github.com/google/uuid"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 )
 
-func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (*models.Tokens, error) {
+func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (string, error) {
 	user := &models.User{
 		Name:          &req.Name,
 		Email:         req.Email,
 		Picture:       &req.Picture,
 		EmailVerified: req.EmailVerified,
 	}
+
 	oauth := &models.OAuthAccount{
 		Provider:       "google",
 		ProviderUserID: req.Sub,
 		GivenName:      req.GivenName,
 		FamilyName:     req.FamilyName,
 	}
+
 	id, err := s.repo.SaveGoogleUser(ctx, user, oauth)
 	if err != nil {
-		return nil, fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
-	}
-	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
-	if err != nil {
-		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
-	}
-	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
-	if err != nil {
-		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
+		return "", fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
 	}
 
-	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
-		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
+	event := dto.UserRegisteredEvent{
+		UserID: id.String(),
 	}
 
-	s.logger.Debug("successful google callback", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "web"))
-	return &models.Tokens{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+	data, err := v2.Marshal(&event)
+	if err != nil {
+		return "", fmt.Errorf("v2.Marshal")
+	}
+
+	record := &kgo.Record{
+		Topic: topic,
+		Value: data,
+	}
+	result := s.client.ProduceSync(ctx, record)
+	if err := result.FirstErr(); err != nil {
+		return "", fmt.Errorf("s.client.ProduceSync: %w", err)
+	}
+	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", id.String()))
+
+	oauthCode := uuid.New()
+
+	if err := s.codeStore.SaveOauthCode(ctx, oauthCode.String(), id.String()); err != nil {
+		return "", fmt.Errorf("s.codeStore.SaveOauthCode: %w", err)
+	}
+
+	s.logger.Debug("successful google callback", zap.String("user_id", id.String()), zap.String("source", "google"), zap.String("client", "web"))
+
+	return oauthCode.String(), nil
 }
 
 // android
@@ -100,7 +116,49 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
-	s.logger.Debug("successful google callback for android", zap.Any("user_id", user.ID), zap.String("source", "google"), zap.String("client", "android"))
+	s.logger.Debug("successful google callback for android", zap.String("user_id", id.String()), zap.String("source", "google"), zap.String("client", "android"))
+	return &models.Tokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *AuthService) Exchange(ctx context.Context, req *dto.ExchangeRequestDTO) (*models.Tokens, error) {
+	userId, err := s.codeStore.GetOauthCode(ctx, req.Code)
+	if err != nil {
+		return nil, fmt.Errorf("s.codeStore.GetOauthCode: %w", err)
+	}
+
+	if err := s.codeStore.DeleteOauthCode(ctx, req.Code); err != nil {
+		return nil, fmt.Errorf("s.codeStore.DeleteOauthCode: %w", err)
+	}
+
+	parseId, err := uuid.Parse(userId)
+	if err != nil {
+		return nil, fmt.Errorf("uuid.Parse: %w", err)
+	}
+
+	user, err := s.repo.GetUserByID(ctx, parseId)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.GetUserByID: %w", err)
+	}
+
+	accessToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, AccessTTL)
+	if err != nil {
+		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
+	}
+
+	refreshToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	if err != nil {
+		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
+	}
+
+	if err := s.sessionStore.SaveToken(ctx, parseId, refreshToken, RefreshTTL); err != nil {
+		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
+	}
+
+	s.logger.Debug("successful exchange", zap.String("user_id", parseId.String()), zap.String("client", "web"))
+
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,

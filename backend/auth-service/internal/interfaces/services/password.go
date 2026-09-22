@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
+
 	"strconv"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/pkg/mask"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -49,7 +50,7 @@ func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordD
 		return fmt.Errorf("s.repo.UpdateUserPassword: %w", err)
 	}
 
-	s.logger.Debug("update password", zap.Any("user_id", id))
+	s.logger.Debug("update password", zap.String("user_id", id.String()))
 	return nil
 }
 
@@ -70,7 +71,10 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 		return nil, fmt.Errorf("jwtpkg.GenerateRandomString: %w", err)
 	}
 
-	code := rand.Intn(900000) + 100000
+	code, err := jwtpkg.GenerateSecureCode()
+	if err != nil {
+		return nil, fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
+	}
 	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, ResetPassTTL); err != nil {
 		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
@@ -92,6 +96,8 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 	if err := s.queue.AddEmailTaskQueue(ctx, body); err != nil {
 		return nil, fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
+
+	s.logger.Debug("password reset requested", zap.String("email", mask.Email(req.Email)))
 
 	return &dto.PendingKeyDTO{
 		PendingKey: pendingKey,
@@ -128,7 +134,7 @@ func (s *AuthService) ConfirmPasswordReset(ctx context.Context, req *dto.Passwor
 		return fmt.Errorf("s.repo.UpdateUserPassword: %w", err)
 	}
 
-	s.logger.Debug("reset password", zap.Any("user_id", user.ID))
+	s.logger.Debug("reset password", zap.String("user_id", user.ID.String()))
 	return nil
 }
 
@@ -144,7 +150,10 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 		return fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
 	}
 
-	code := rand.Intn(900000) + 100000
+	code, err := jwtpkg.GenerateSecureCode()
+	if err != nil {
+		return fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
+	}
 	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, ResetPassTTL); err != nil {
 		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
@@ -167,6 +176,6 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 		return fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
-	s.logger.Debug("reset password code resend")
+	s.logger.Debug("reset password code resend", zap.String("email", mask.Email(req.Email)))
 	return nil
 }

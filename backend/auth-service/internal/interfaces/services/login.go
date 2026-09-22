@@ -2,19 +2,20 @@ package services
 
 import (
 	"context"
-	"encoding/json"
+	v2 "encoding/json/v2"
 	"fmt"
 
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 const (
-	role = "user"
+	role  = "user"
+	topic = "user.social"
 )
 
 func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
@@ -27,10 +28,30 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 		return nil, fmt.Errorf("bcrypt.CompareHashAndPassword: %w", domain.ErrInvalidCredentials)
 	}
 
+	event := &dto.UserKafka{
+		UserId: user.ID,
+	}
+
+	data, err := v2.Marshal(event)
+	if err != nil {
+		return nil, fmt.Errorf("v2.Marshal: %w", err)
+	}
+
+	record := &kgo.Record{
+		Topic: topic,
+		Value: data,
+	}
+	result := s.client.ProduceSync(ctx, record)
+	if err := result.FirstErr(); err != nil {
+		return nil, fmt.Errorf("s.client.ProduceSync: %w", err)
+	}
+	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", user.ID.String()))
+
 	accessToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
+
 	refreshToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
@@ -40,25 +61,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*m
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
-	event := &dto.UserKafka{
-		UserId:    user.ID,
-		UpdatedAt: user.UpdatedAt,
-		CreatedAt: user.CreatedAt,
-	}
-
-	data, err := json.Marshal(event)
-	if err != nil {
-		return nil, fmt.Errorf("json.Marshal: %w", err)
-	}
-
-	if err := s.writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(user.ID.String()),
-		Value: data,
-	}); err != nil {
-		return nil, fmt.Errorf("s.writer.WriteMessages: %w", err)
-	}
-
-	s.logger.Debug("successful user login", zap.Any("user_id", user.ID))
+	s.logger.Debug("successful user login", zap.String("user_id", user.ID.String()))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
