@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  external_labels:
+    monitor: 'codelab-monitor'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'backend'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['auth-service:8081', 'auth-worker:8082', 'social-service:8083', 'notification-service:8084']
+        labels:
+          group: 'services'
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
