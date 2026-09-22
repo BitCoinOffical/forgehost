@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -82,4 +83,12 @@ func GenerateRandomString() (string, error) {
 		return "", fmt.Errorf("rand.Read: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func GenerateSecureCode() (int, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(900000))
+	if err != nil {
+		return 0, fmt.Errorf("rand.Int: %w", err)
+	}
+	return int(n.Int64()) + 100000, nil
 }
