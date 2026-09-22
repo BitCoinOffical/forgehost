@@ -26,6 +26,7 @@ const (
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/login/google [get]
 func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+	authRequestsTotal.Inc()
 	oauthState, err := jwtpkg.GenerateRandomString()
 	if err != nil {
 		response.InternalServerError(c, err, "failed generate session id", h.logger)
@@ -61,6 +62,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 // @Failure      502  {object}  map[string]string  "userinfo request failed"
 // @Router       /auth/login/google/callback [get]
 func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+	authRequestsTotal.Inc()
 	storedId, err := c.Cookie("oauth_state")
 	if err != nil || c.Query("state") != storedId {
 		response.BadRequest(c, err, "invalid state", h.logger)
@@ -134,6 +136,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/exchange [post]
 func (h *AuthHandler) Exchange(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.ExchangeRequestDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -162,6 +165,7 @@ func (h *AuthHandler) Exchange(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/login/google [post]
 func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.GoogleAndroidUserDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

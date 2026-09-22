@@ -22,6 +22,7 @@ import (
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
+	authRequestsTotal.Inc()
 	id, err := middleware.GetUserID(c)
 	if err != nil {
 		if errors.Is(err, domain.ErrValueNotFound) {

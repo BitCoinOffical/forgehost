@@ -25,6 +25,7 @@ import (
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/update [patch]
 func (h *AuthHandler) UpdatePassword(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req *dto.UserPasswordDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

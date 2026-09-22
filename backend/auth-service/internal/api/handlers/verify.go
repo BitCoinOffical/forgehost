@@ -23,6 +23,7 @@ import (
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/verify-email [post]
 func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.VerifyEmailDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -55,6 +56,7 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/verify-email/resend [post]
 func (h *AuthHandler) ResendVerifyEmail(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.VerifyEmailDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

@@ -23,6 +23,7 @@ import (
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/refresh [post]
 func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.UpdateTokensDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)

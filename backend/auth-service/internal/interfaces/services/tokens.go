@@ -5,15 +5,12 @@ import (
 	"fmt"
 
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens *dto.TokensDTO) (*models.Tokens, error) {
-	refreshToken := tokens.RefreshToken
-
+func (s *AuthService) UpdateAccessToken(ctx context.Context, refreshToken string) (*models.Tokens, error) {
 	user, err := s.tokens.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("s.tokens.ValidateToken: %w", err)
@@ -38,7 +35,7 @@ func (s *AuthService) UpdateAccessToken(ctx context.Context, tokens *dto.TokensD
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
-	s.logger.Debug("successful token access", zap.Any("user_id", id))
+	s.logger.Debug("successful token access", zap.String("user_id", id.String()))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,

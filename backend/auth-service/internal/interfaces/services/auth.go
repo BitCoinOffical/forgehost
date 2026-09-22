@@ -4,7 +4,7 @@ import (
 	rabbitqueue "github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/queue/rabbitMQ"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/repo"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/interfaces/store"
-	"github.com/segmentio/kafka-go"
+	"github.com/twmb/franz-go/pkg/kgo"
 
 	"time"
 
@@ -24,7 +24,7 @@ const (
 
 type AuthService struct {
 	logger            *zap.Logger
-	writer            *kafka.Writer
+	client            *kgo.Client
 	tokens            *jwtpkg.ManagerToken
 	repo              *repo.AuthRepo
 	queue             *rabbitqueue.RabbitQueue
@@ -45,7 +45,7 @@ func NewAuthService(
 	WebgoogleClientID string,
 	queue *rabbitqueue.RabbitQueue,
 	logger *zap.Logger,
-	writer *kafka.Writer,
+	client *kgo.Client,
 ) *AuthService {
 	return &AuthService{
 		repo:              repo,
@@ -57,6 +57,6 @@ func NewAuthService(
 		WebgoogleClientID: WebgoogleClientID,
 		queue:             queue,
 		logger:            logger,
-		writer:            writer,
+		client:            client,
 	}
 }

@@ -23,6 +23,7 @@ import (
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
+	authRequestsTotal.Inc()
 	var req dto.UsersRegisterDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
