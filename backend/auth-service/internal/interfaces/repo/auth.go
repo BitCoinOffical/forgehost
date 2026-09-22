@@ -29,8 +29,8 @@ func NewAuthRepo(pool *pgxpool.Pool) *AuthRepo {
 func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	var user models.User
 
-	sql := `SELECT email, email_verified, password_hash FROM users WHERE id = $1`
-	err := r.pool.QueryRow(ctx, sql, id).Scan(&user.Email, &user.EmailVerified, &user.PasswordHash)
+	sql := `SELECT email, password_hash, email_verified, email_banned FROM users WHERE id = $1`
+	err := r.pool.QueryRow(ctx, sql, id).Scan(&user.Email, &user.PasswordHash, &user.EmailVerified, &user.EmailBanned)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
@@ -46,7 +46,7 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 
 	sql := `SELECT id, email_verified, password_hash, updated_at, created_at FROM users WHERE email = $1`
 
-	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash)
+	err := r.pool.QueryRow(ctx, sql, email).Scan(&user.ID, &user.EmailVerified, &user.PasswordHash, &user.UpdatedAt, &user.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
