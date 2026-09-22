@@ -1,0 +1,22 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+local.file_match "logs" {
+    path_targets = [
+        {"__path__" = "/backend/logs/*.log"},
+        {"__path__" = "/backend/logs/*.txt"},
+    ]
+}
+
+loki.source.file "logs" {
+    targets    = local.file_match.logs.targets
+    forward_to = [loki.write.logs.receiver]
+}
+
+loki.write "logs" {
+    endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+    }
+}
