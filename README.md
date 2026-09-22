@@ -1,0 +1,5 @@
+Докер зависимости:
+Loki
+```sh
+docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+```
