@@ -193,6 +193,29 @@ services:
     depends_on:
       - loki
 
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./config/prometheus.yml:/etc/prometheus/prometheus.yml"
+      - prometheus-data:/prometheus
+    depends_on:
+      - node-exporter
+
 volumes:
   postgres_auth_data:
   postgres_social_data:
@@ -201,3 +224,4 @@ volumes:
   rabbitmq_data:
   kafka_data:
   loki-data:
+  prometheus-data:
