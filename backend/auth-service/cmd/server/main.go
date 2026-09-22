@@ -27,8 +27,18 @@ import (
 
 const (
 	timeoutSecond = 5
+	logPath       = "logs/auth.log"
 )
 
+// @title           Forgehost Auth Service API
+// @version         1.0
+// @description     Authentication and authorization service for Forgehost: registration, login, email verification, password reset, token refresh and Google OAuth.
+// @BasePath        /api/v1
+
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 Type "Bearer" followed by a space and the JWT access token.
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -38,7 +48,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel)
+	logger, err := loggerpkg.NewLogger(cfg.App.DebugLevel, logPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,13 +101,16 @@ func main() {
 	}
 	logger.Info("migrations applied successfully")
 
-	writer := kafkaconn.NewKafkaConn(&kafkaconn.KafkaConn{
+	client, err := kafkaconn.NewKafkaClient(&kafkaconn.KafkaConn{
 		Addr: cfg.Kafka.Addr,
 	})
+	if err != nil {
+		logger.Fatal("kafka client failed", zap.Error(err))
+	}
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
-	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, rc, logger, writer)
+	srvs := handlers.NewServices(manager, rdb, pool, cfg.WebGoogle.WebClientID, rc, logger, client)
 	handlrs := handlers.NewHandlers(logger, srvs, &oauth2.Config{
 		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
 		ClientID:     cfg.WebGoogle.WebClientID,
@@ -126,13 +139,11 @@ func main() {
 	postgresdb.ClosePool(pool)
 	logger.Info("pool closesd")
 
-	if err := kafkaconn.KafkaClose(writer); err != nil {
-		logger.Fatal("failed close kafka", zap.Error(err))
-	}
+	kafkaconn.KafkaClose(client)
 	logger.Info("kafka closed")
 
 	if err := serv.ShutDown(shutdownCtx); err != nil {
-		logger.Fatal("shutdown error", zap.Error(err))
+		logger.Error("shutdown error", zap.Error(err))
 	}
 	logger.Info("server shut down")
 }
