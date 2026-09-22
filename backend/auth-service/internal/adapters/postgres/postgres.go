@@ -3,6 +3,8 @@ package postgresdb
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,13 +18,14 @@ type PostgresConfig struct {
 }
 
 func NewPool(cfg *PostgresConfig) (*pgxpool.Pool, error) {
-	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
-		cfg.DBUser,
-		cfg.DBPassword,
-		cfg.DBHost,
-		cfg.DBPort,
-		cfg.DBName,
-	)
+	u := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(cfg.DBUser, cfg.DBPassword),
+		Host:   net.JoinHostPort(cfg.DBHost, cfg.DBPort),
+		Path:   cfg.DBName,
+	}
+
+	connString := u.String()
 
 	ctx := context.Background()
 
