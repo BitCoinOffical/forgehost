@@ -26,12 +26,17 @@ func NewProfileRepo(pool *pgxpool.Pool) *ProfileRepo {
 	return &ProfileRepo{pool: pool}
 }
 
-func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Profile, error) {
+func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Profile, []models.FeedPost, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("r.pool.Begin: %w", err)
+	}
+
 	sql := `
-		SELECT p.username, p.bio, p.avatar_url, p.is_banned, p.created_at, p.updated_at, 
+		SELECT p.user_id, p.username, p.bio, p.avatar_url, p.is_banned, p.created_at, p.updated_at, 
 		(
 			SELECT COUNT(*) FROM subscriptions s 
-			WHERE s.target_id = p.user_id
+			WHERE s.target_user_id = p.user_id
 		) AS subscribers, 
 			(
 			SELECT COUNT(*) FROM subscriptions s 
@@ -46,19 +51,71 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 
 	var resp models.Profile
 
-	if err := r.pool.QueryRow(ctx, sql, id).Scan(&resp.UserName, &resp.Bio, &resp.AvatarUrl, &resp.IsBanned, &resp.CreatedAt, &resp.UpdatedAt); err != nil {
+	if err := tx.QueryRow(ctx, sql, id).Scan(
+		&resp.UserID,
+		&resp.UserName,
+		&resp.Bio,
+		&resp.AvatarUrl,
+		&resp.IsBanned,
+		&resp.CreatedAt,
+		&resp.UpdatedAt,
+		&resp.Subscribers,
+		&resp.Subscriptions,
+		&resp.Posts,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrNotFound
+			return nil, nil, domain.ErrNotFound
 		}
-		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
+		return nil, nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
 
-	return &resp, nil
+	rows, err := tx.Query(ctx,
+		`
+		SELECT 
+		p.username,
+		p.avatar_url,
+		ps.id AS post_id,
+		ps.topic_id,
+		(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
+		ps.user_id,
+		ps.image_url,
+		ps.description,
+		ps.views,
+		(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
+		FROM posts ps 
+        JOIN profiles p ON p.user_id = $1 AND ps.is_delete = false
+		ORDER BY ps.created_at DESC
+	`, id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("tx.Query: %w", err)
+	}
+
+	fds := make([]models.FeedPost, 0)
+	for rows.Next() {
+		var fd models.FeedPost
+		if err := rows.Scan(
+			&fd.Username,
+			&fd.AvatarURL,
+			&fd.PostID,
+			&fd.TopicID,
+			&fd.TopicName,
+			&fd.UserID,
+			&fd.ImageURL,
+			&fd.Description,
+			&fd.Views,
+			&fd.LikeCount,
+		); err != nil {
+			return nil, nil, fmt.Errorf("rows.Scan: %w", err)
+		}
+		fds = append(fds, fd)
+	}
+
+	return &resp, fds, nil
 }
 
-func (r *ProfileRepo) SaveProfile(ctx context.Context, profile *models.Profile) error {
+func (r *ProfileRepo) SaveProfile(ctx context.Context, userId string) error {
 	sql := `INSERT INTO profiles (user_id, created_at, updated_at) VALUES ($1, NOW(), NOW())`
-	if _, err := r.pool.Exec(ctx, sql, profile.UserID); err != nil {
+	if _, err := r.pool.Exec(ctx, sql, userId); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return fmt.Errorf("profile alredy exists: %w", domain.ErrAlreadyExists)
@@ -69,31 +126,58 @@ func (r *ProfileRepo) SaveProfile(ctx context.Context, profile *models.Profile) 
 }
 
 func (r *ProfileRepo) BuildUpdateProfile(ctx context.Context, profile *models.Profile) (*models.Profile, error) {
-	builder := squirrel.Update("profiles").Where(squirrel.Eq{"id": profile.UserID}).PlaceholderFormat(squirrel.Dollar).
-		Suffix("RETURNING user_id, username, bio, avatar_url, is_banned, created_at, updated_at")
+	builder := squirrel.Update("profiles").Where(squirrel.Eq{"user_id": profile.UserID})
 
 	if profile.UserName != nil {
-		builder.Set("username", profile.UserName)
+		builder = builder.Set("username", *profile.UserName)
 	}
 
 	if profile.Bio != nil {
-		builder.Set("bio", profile.Bio)
+		builder = builder.Set("bio", *profile.Bio)
 	}
 
 	if profile.AvatarUrl != nil {
-		builder.Set("avatar_url", profile.AvatarUrl)
+		builder = builder.Set("avatar_url", *profile.AvatarUrl)
 	}
 
-	builder.Set("updated_at", squirrel.Expr("NOW()"))
+	builder = builder.Set("updated_at", squirrel.Expr("NOW()"))
 
-	query, args, err := builder.ToSql()
+	query, args, err := builder.
+		PlaceholderFormat(squirrel.Dollar).
+		Suffix(`
+		RETURNING user_id, username, bio, avatar_url, is_banned, created_at, updated_at,
+		(
+			SELECT COUNT(*) FROM subscriptions s 
+			WHERE s.target_user_id = profiles.user_id
+		) AS subscribers, 
+		(
+			SELECT COUNT(*) FROM subscriptions s 
+			WHERE s.user_id = profiles.user_id
+		) AS subscriptions,
+		(
+			SELECT COUNT(*) FROM posts ps 
+			WHERE ps.user_id = profiles.user_id AND ps.is_delete = false
+		) AS posts
+		`).
+		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("builder.ToSql: %w", err)
 	}
 
 	var resp models.Profile
 
-	err = r.pool.QueryRow(ctx, query, args...).Scan(&resp.UserID, &resp.UserName, &resp.Bio, &resp.AvatarUrl, &resp.IsBanned, &resp.CreatedAt, &resp.UpdatedAt)
+	err = r.pool.QueryRow(ctx, query, args...).Scan(
+		&resp.UserID,
+		&resp.UserName,
+		&resp.Bio,
+		&resp.AvatarUrl,
+		&resp.IsBanned,
+		&resp.CreatedAt,
+		&resp.UpdatedAt,
+		&resp.Subscribers,
+		&resp.Subscriptions,
+		&resp.Posts,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, sql.ErrNoRows
