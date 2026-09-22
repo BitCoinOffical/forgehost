@@ -4,15 +4,18 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	v2 "encoding/json/v2"
 	"errors"
 	"fmt"
-	"math/rand"
 	"strconv"
 	"time"
 
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
+	"github.com/BitCoinOffical/forgehost/auth-service/pkg/mask"
+	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 )
 
@@ -50,6 +53,26 @@ func (s *AuthService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO) 
 		return nil, fmt.Errorf("s.repo.SaveUser: %w", err)
 	}
 
+	event := dto.UserRegisteredEvent{
+		UserID: id.String(),
+	}
+
+	data, err := v2.Marshal(&event)
+	if err != nil {
+		return nil, fmt.Errorf("v2.Marshal")
+	}
+
+	record := &kgo.Record{
+		Topic: topic,
+		Value: data,
+	}
+	result := s.client.ProduceSync(ctx, record)
+	if err := result.FirstErr(); err != nil {
+		return nil, fmt.Errorf("s.client.ProduceSync: %w", err)
+	}
+
+	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", id.String()))
+
 	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
@@ -63,7 +86,7 @@ func (s *AuthService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailDTO) 
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
-	s.logger.Debug("successful user verify email", zap.Any("user_id", id))
+	s.logger.Debug("successful user verify email", zap.String("user_id", id.String()))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -87,7 +110,11 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 		return fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
 	}
 
-	code := rand.Intn(900000) + 100000
+	code, err := jwtpkg.GenerateSecureCode()
+	if err != nil {
+		return fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
+	}
+
 	if err := s.codeStore.SaveVerificationCode(ctx, verify.PendingKey, code, VerificationTTL); err != nil {
 		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
@@ -113,6 +140,6 @@ func (s *AuthService) ResendVerifyEmail(ctx context.Context, req *dto.VerifyEmai
 		return fmt.Errorf("s.queue.AddEmailTaskQueue: %w", err)
 	}
 
-	s.logger.Debug("verification code resend")
+	s.logger.Debug("verification code resend", zap.String("email", mask.Email(verify.Email)))
 	return nil
 }
