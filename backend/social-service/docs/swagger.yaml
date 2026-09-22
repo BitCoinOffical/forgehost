@@ -1,0 +1,900 @@
+basePath: /api/v1
+definitions:
+  dto.CreateCommentDTO:
+    properties:
+      body:
+        type: string
+      parent_id:
+        type: string
+    type: object
+  dto.CreatePostDTO:
+    properties:
+      description:
+        type: string
+      image_url:
+        type: string
+      topic_id:
+        type: integer
+    type: object
+  dto.PostDTO:
+    properties:
+      id:
+        type: string
+    type: object
+  dto.ReportCommentDTO:
+    properties:
+      cause:
+        type: string
+    type: object
+  dto.ReportDTO:
+    properties:
+      cause:
+        type: string
+    type: object
+  dto.UpdateCommentDTO:
+    properties:
+      body:
+        type: string
+    type: object
+  dto.UpdatePostDTO:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      topic_id:
+        type: integer
+    type: object
+  dto.UpdateProfileDTO:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.UserProfileDTO:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  response.ErrorBody:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:8084
+info:
+  contact: {}
+  description: API service for a social networking service
+  termsOfService: http://swagger.io/terms/
+  title: Social Service API
+  version: "1.0"
+paths:
+  /social/posts:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает посты авторов, на которых подписан текущий пользователь
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.PostDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Лента постов по подпискам
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные поста
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePostDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать пост
+      tags:
+      - posts
+  /social/posts/{post_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить пост
+      tags:
+      - posts
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PostDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить пост по ID
+      tags:
+      - posts
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePostDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PostDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Обновить пост
+      tags:
+      - posts
+  /social/posts/{post_id}/comments:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить комментарии к посту
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Данные комментария
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateCommentDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать комментарий
+      tags:
+      - comments
+  /social/posts/{post_id}/comments/{comment_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: ID комментария
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить комментарий
+      tags:
+      - comments
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: ID комментария
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: Новый текст комментария
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCommentDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Обновить комментарий
+      tags:
+      - comments
+  /social/posts/{post_id}/comments/{comment_id}/like:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: ID комментария
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Убрать лайк с комментария
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: ID комментария
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Лайкнуть комментарий
+      tags:
+      - comments
+  /social/posts/{post_id}/comments/{comment_id}/report:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: ID комментария
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: Причина жалобы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReportCommentDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Пожаловаться на комментарий
+      tags:
+      - comments
+  /social/posts/{post_id}/like:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Убрать лайк с поста
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Лайкнуть пост
+      tags:
+      - posts
+  /social/posts/{post_id}/report:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Причина жалобы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReportDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Пожаловаться на пост
+      tags:
+      - posts
+  /social/posts/{post_id}/view:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID поста
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Зафиксировать просмотр поста
+      tags:
+      - posts
+  /social/posts/global/{cursor}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает глобальную ленту постов с пагинацией по курсору
+      parameters:
+      - description: Курсор пагинации
+        in: path
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.PostDTO'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Глобальная лента постов
+      tags:
+      - posts
+  /social/profile:
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет данные профиля текущего пользователя
+      parameters:
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateProfileDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserProfileDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль
+      tags:
+      - profile
+  /social/profile/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает публичный профиль пользователя по его идентификатору
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserProfileDTO'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить профиль пользователя по ID
+      tags:
+      - profile
+  /social/profile/{user_id}/report:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт жалобу на указанного пользователя
+      parameters:
+      - description: ID пользователя, на которого жалуемся
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Причина жалобы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReportDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Пожаловаться на пользователя
+      tags:
+      - profile
+  /social/profile/{user_id}/subscribe:
+    post:
+      consumes:
+      - application/json
+      description: Оформляет подписку текущего пользователя на указанного пользователя
+      parameters:
+      - description: ID пользователя, на которого подписываемся
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Подписаться на пользователя
+      tags:
+      - profile
+  /social/profile/{user_id}/subscribers:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список подписчиков указанного пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.UserProfileDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить подписчиков пользователя
+      tags:
+      - profile
+  /social/profile/{user_id}/subscriptions:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список пользователей, на которых подписан указанный
+        пользователь
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.UserProfileDTO'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить подписки пользователя
+      tags:
+      - profile
+  /social/profile/{user_id}/unsubscribe:
+    delete:
+      consumes:
+      - application/json
+      description: Отменяет подписку текущего пользователя на указанного пользователя
+      parameters:
+      - description: ID пользователя, от которого отписываемся
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Отписаться от пользователя
+      tags:
+      - profile
+  /social/profile/me:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает профиль текущего авторизованного пользователя (id берётся
+        из токена)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserProfileDTO'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Получить свой профиль
+      tags:
+      - profile
+  /social/topics:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить список топиков
+      tags:
+      - posts
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

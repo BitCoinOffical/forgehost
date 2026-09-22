@@ -1,0 +1,617 @@
+basePath: /api/v1
+definitions:
+  dto.ExchangeRequestDTO:
+    properties:
+      code:
+        type: string
+    type: object
+  dto.GoogleAndroidUserDTO:
+    properties:
+      id_token:
+        type: string
+    type: object
+  dto.PasswordResetDTO:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      new_password:
+        type: string
+      new_password_retry:
+        type: string
+      pending_key:
+        type: string
+    type: object
+  dto.PendingKeyDTO:
+    properties:
+      pending_key:
+        type: string
+    type: object
+  dto.TokensDTO:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  dto.UpdateTokensDTO:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  dto.UserPasswordDTO:
+    properties:
+      new_password:
+        type: string
+      new_password_retry:
+        type: string
+      old_password:
+        type: string
+    type: object
+  dto.UsersLoginDTO:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  dto.UsersRegisterDTO:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      password_retry:
+        type: string
+    type: object
+  dto.VerifyEmailDTO:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      pending_key:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: 'Authentication and authorization service for Forgehost: registration,
+    login, email verification, password reset, token refresh and Google OAuth.'
+  title: Forgehost Auth Service API
+  version: "1.0"
+paths:
+  /auth/exchange:
+    post:
+      consumes:
+      - application/json
+      description: Called by the frontend right after the Google OAuth redirect. Exchanges
+        the short-lived one-time code (from the callback redirect) for a real access/refresh
+        token pair.
+      parameters:
+      - description: One-time exchange code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExchangeRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Exchange one-time OAuth code for tokens
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user and returns a new access/refresh token pair.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UsersLoginDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in with email and password
+      tags:
+      - auth
+  /auth/login/google:
+    get:
+      description: Redirects the browser to Google's consent screen. Sets an "oauth_state"
+        CSRF-protection cookie.
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: redirect to Google consent screen
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Start Google OAuth login (web)
+      tags:
+      - auth
+    post:
+      consumes:
+      - application/json
+      description: Verifies a Google ID token obtained natively on Android and returns
+        an access/refresh token pair.
+      parameters:
+      - description: Google ID token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GoogleAndroidUserDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: invalid google token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Log in with Google (Android)
+      tags:
+      - auth
+  /auth/login/google/callback:
+    get:
+      description: Handles Google's redirect after consent, validates state, exchanges
+        the code, fetches the Google profile, then redirects to the frontend with
+        a short-lived one-time exchange code.
+      parameters:
+      - description: OAuth state, must match the oauth_state cookie
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Authorization code issued by Google
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: redirect to frontend with one-time exchange code
+        "400":
+          description: invalid state or empty code
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: failed to exchange code for token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: google email not verified
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: userinfo request failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Google OAuth callback (web)
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidates the authenticated user's session/tokens.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: logged out
+        "400":
+          description: incorrect type value
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: missing or invalid token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Log out the current user
+      tags:
+      - auth
+  /auth/password/reset:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset code to the given email and returns a pending
+        key used to confirm the reset.
+      parameters:
+      - description: Email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasswordResetDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PendingKeyDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/password/reset/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirms the reset code sent to the user's email and sets the new
+        password.
+      parameters:
+      - description: Email, pending key, code and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasswordResetDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: password reset
+        "400":
+          description: invalid body or passwords do not match
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Confirm password reset
+      tags:
+      - auth
+  /auth/password/reset/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resends a fresh password reset code to the user's email. Rate-limited.
+      parameters:
+      - description: Email and pending key
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasswordResetDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code resent
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: too many attempts
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resend password reset code
+      tags:
+      - auth
+  /auth/password/update:
+    patch:
+      consumes:
+      - application/json
+      description: Changes the password of the currently authenticated user after
+        verifying the old password.
+      parameters:
+      - description: Old and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserPasswordDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: password updated
+        "400":
+          description: invalid body, incorrect type value, or passwords do not match
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: missing token or invalid old password
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update password (authenticated)
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a valid refresh token for a new access/refresh token
+        pair.
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTokensDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: token not found or expired
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a pending registration and sends a verification code to
+        the provided email. Returns a pending key used to confirm the email in /verify-email.
+      parameters:
+      - description: Registration payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UsersRegisterDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.PendingKeyDTO'
+        "400":
+          description: invalid body or passwords do not match
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Confirms the code sent to the user's email during registration,
+        activating the account and returning an access/refresh token pair.
+      parameters:
+      - description: Email, pending key and verification code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyEmailDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensDTO'
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: email already exists
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Confirm email verification code
+      tags:
+      - auth
+  /auth/verify-email/resend:
+    post:
+      consumes:
+      - application/json
+      description: Resends a fresh verification code to the user's email. Rate-limited.
+      parameters:
+      - description: Email and pending key
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyEmailDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: code resent
+        "400":
+          description: invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: too many attempts
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resend email verification code
+      tags:
+      - auth
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the JWT access token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
