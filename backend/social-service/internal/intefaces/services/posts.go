@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	v2 "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
+	"github.com/google/uuid"
 )
 
 type PostsService struct {
@@ -29,7 +30,7 @@ func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.Fee
 		return nil, fmt.Errorf("s.repo.GetPostsList: %w", err)
 	}
 
-	m := make(map[int]models.FeedPost, len(sl)+len(st))
+	m := make(map[string]models.FeedPost, len(sl)+len(st))
 	for _, data := range sl {
 		m[data.PostID] = data
 	}
@@ -47,24 +48,34 @@ func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.Fee
 
 func (r *PostsService) GetGlobalPosts(ctx context.Context, id, cursor string) ([]models.FeedPost, error) {
 	var req dto.CursorDTO
-	decoded, err := base64.URLEncoding.DecodeString(cursor)
-	if err != nil {
-		return nil, fmt.Errorf("base64.URLEncoding.DecodeString: %w", err)
-	}
+	var postId *uuid.UUID
+	if cursor != "" {
+		decoded, err := base64.URLEncoding.DecodeString(cursor)
+		if err != nil {
+			return nil, fmt.Errorf("base64.URLEncoding.DecodeString: %w", err)
+		}
 
-	if err := json.Unmarshal(decoded, &req); err != nil {
-		return nil, fmt.Errorf("json.Unmarshal: %w", err)
+		if err := v2.Unmarshal(decoded, req); err != nil {
+			return nil, fmt.Errorf("v2.Unmarshal: %w", err)
+		}
+
+		id, err := uuid.Parse(*req.PostId)
+		if err != nil {
+			return nil, fmt.Errorf("uuid.Parse: %w", err)
+		}
+
+		postId = &id
 	}
 
 	posts, err := r.cache.GetGlobal(ctx, cursor)
-	if !errors.Is(err, domain.ErrNotFound) {
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
 		return nil, fmt.Errorf("r.cache.GetCandidates: %w", err)
 	}
 	if posts != nil {
 		return posts, nil
 	}
 
-	posts, err = r.repo.GetGlobalPosts(ctx)
+	posts, err = r.repo.GetGlobalPosts(ctx, postId, req.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("r.repo.GetGlobalPosts: %w", err)
 	}
