@@ -44,12 +44,11 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 
 func (s *Server) Run() error {
 	s.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
+	s.engine.GET("/metrics", s.m.RequireRole(), gin.WrapH(promhttp.Handler()))
 	api := s.engine.Group("/api/v1")
 	auth := api.Group("/auth")
 	auth.Use(s.m.RateLimiter())
 	{
-		auth.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 		auth.POST("/register", s.h.Auth.Register)
 		auth.POST("/login", s.h.Auth.Login)
