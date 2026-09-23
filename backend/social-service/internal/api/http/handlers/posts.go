@@ -16,7 +16,7 @@ import (
 )
 
 var postsRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "auth_requests_total",
+	Name: "post_requests_total",
 	Help: "Total number of auth requests",
 })
 
