@@ -42,14 +42,12 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 
 func (s *Server) Run() error {
 	s.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
+	s.engine.GET("/metrics", s.m.RequireRole(), gin.WrapH(promhttp.Handler()))
 	api := s.engine.Group("/api/v1")
 	social := api.Group("/social")
 	social.Use(s.m.AuthMiddleware())
 	social.Use(s.m.RateLimiter())
 	{
-		social.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
 		social.GET("/profile/me", s.h.Profile.Me)
 		social.GET("/profile/:user_id", s.h.Profile.GetProfileByID)
 		social.PATCH("/profile", s.h.Profile.UpdateProfile)
