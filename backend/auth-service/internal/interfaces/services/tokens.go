@@ -10,7 +10,25 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *AuthService) UpdateAccessToken(ctx context.Context, refreshToken string) (*models.Tokens, error) {
+type RefreshService struct {
+	tokens       ManagerToken
+	sessionStore SessionStore
+	logger       *zap.Logger
+}
+
+func NewRefreshService(
+	tokens ManagerToken,
+	sessionStore SessionStore,
+	logger *zap.Logger,
+) *RefreshService {
+	return &RefreshService{
+		tokens:       tokens,
+		sessionStore: sessionStore,
+		logger:       logger,
+	}
+}
+
+func (s *RefreshService) UpdateAccessToken(ctx context.Context, refreshToken string) (*models.Tokens, error) {
 	user, err := s.tokens.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("s.tokens.ValidateToken: %w", err)
