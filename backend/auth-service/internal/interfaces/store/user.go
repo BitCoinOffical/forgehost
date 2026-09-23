@@ -1,12 +1,13 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -25,7 +26,7 @@ func NewUserStore(rdb *redis.Client) *UserStore {
 }
 
 func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.UserStored) error {
-	key := fmt.Sprintf("%s%s", pendingKey, randStr)
+	key := pendingKey + randStr
 	pipe := s.rdb.Pipeline()
 	if err := pipe.HSet(ctx, key, user).Err(); err != nil {
 		return fmt.Errorf("s.rdb.HSet: %w", err)
@@ -39,7 +40,7 @@ func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.U
 }
 
 func (s *UserStore) GetUser(ctx context.Context, randStr string) (*models.UserStored, error) {
-	key := fmt.Sprintf("%s%s", pendingKey, randStr)
+	key := pendingKey + randStr
 	var user models.UserStored
 	err := s.rdb.HGetAll(ctx, key).Scan(&user)
 	if err != nil {
