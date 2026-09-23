@@ -6,14 +6,13 @@ import (
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
 )
 
 type ProfileService struct {
-	repo *repo.ProfileRepo
+	repo ProfileRepo
 }
 
-func NewProfileService(repo *repo.ProfileRepo) *ProfileService {
+func NewProfileService(repo ProfileRepo) *ProfileService {
 	return &ProfileService{repo: repo}
 }
 

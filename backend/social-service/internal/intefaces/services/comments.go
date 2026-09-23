@@ -6,14 +6,13 @@ import (
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
 )
 
 type CommentsService struct {
-	repo *repo.CommentsRepo
+	repo CommentsRepo
 }
 
-func NewCommentsService(repo *repo.CommentsRepo) *CommentsService {
+func NewCommentsService(repo CommentsRepo) *CommentsService {
 	return &CommentsService{repo: repo}
 }
 

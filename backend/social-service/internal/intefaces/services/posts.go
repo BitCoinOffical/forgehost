@@ -10,17 +10,15 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
 	"github.com/google/uuid"
 )
 
 type PostsService struct {
-	repo  *repo.PostsRepo
-	cache *cache.Cache
+	repo  PostsRepo
+	cache PostsCache
 }
 
-func NewPostsService(repo *repo.PostsRepo, cache *cache.Cache) *PostsService {
+func NewPostsService(repo PostsRepo, cache PostsCache) *PostsService {
 	return &PostsService{repo: repo, cache: cache}
 }
 
