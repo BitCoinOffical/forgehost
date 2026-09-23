@@ -8,7 +8,20 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
+
+type RefreshHandler struct {
+	srvc   RefreshService
+	logger *zap.Logger
+}
+
+func NewRefreshHandler(srvc RefreshService, logger *zap.Logger) *RefreshHandler {
+	return &RefreshHandler{
+		srvc:   srvc,
+		logger: logger,
+	}
+}
 
 // UpdateAccessToken godoc
 // @Summary      Refresh access token
@@ -22,7 +35,7 @@ import (
 // @Failure      401      {object}  map[string]string  "token not found or expired"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/refresh [post]
-func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
+func (h *RefreshHandler) UpdateAccessToken(c *gin.Context) {
 	authRequestsTotal.Inc()
 	var req dto.UpdateTokensDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -30,7 +43,7 @@ func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req.RefreshToken)
+	tokens, err := h.srvc.UpdateAccessToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			response.Unauthorized(c, err, "not found token", h.logger)
