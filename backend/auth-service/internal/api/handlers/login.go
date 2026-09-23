@@ -8,7 +8,20 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
+
+type LoginHandler struct {
+	srvc   LoginService
+	logger *zap.Logger
+}
+
+func NewLoginHandler(srvc LoginService, logger *zap.Logger) *LoginHandler {
+	return &LoginHandler{
+		srvc:   srvc,
+		logger: logger,
+	}
+}
 
 // Login godoc
 // @Summary      Log in with email and password
@@ -22,7 +35,7 @@ import (
 // @Failure      401      {object}  map[string]string  "invalid credentials"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/login [post]
-func (h *AuthHandler) Login(c *gin.Context) {
+func (h *LoginHandler) Login(c *gin.Context) {
 	authRequestsTotal.Inc()
 	var req dto.UsersLoginDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -30,7 +43,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.LoginUser(c.Request.Context(), &req)
+	tokens, err := h.srvc.LoginUser(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) || errors.Is(err, domain.ErrInvalidCredentials) {
 			response.Unauthorized(c, err, "invalid credentials", h.logger)
