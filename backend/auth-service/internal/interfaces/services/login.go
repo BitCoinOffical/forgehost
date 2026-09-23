@@ -18,7 +18,31 @@ const (
 	topic = "user.social"
 )
 
-func (s *AuthService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
+type LoginService struct {
+	repo         AuthRepository
+	client       *kgo.Client
+	tokens       ManagerToken
+	sessionStore SessionStore
+	logger       *zap.Logger
+}
+
+func NewLoginService(
+	repo AuthRepository,
+	client *kgo.Client,
+	tokens ManagerToken,
+	sessionStore SessionStore,
+	logger *zap.Logger,
+) *LoginService {
+	return &LoginService{
+		repo:         repo,
+		client:       client,
+		tokens:       tokens,
+		sessionStore: sessionStore,
+		logger:       logger,
+	}
+}
+
+func (s *LoginService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*models.Tokens, error) {
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.GetUserByEmail: %w", err)
