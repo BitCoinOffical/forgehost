@@ -8,7 +8,20 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
+
+type LogoutHandler struct {
+	srvc   LogoutService
+	logger *zap.Logger
+}
+
+func NewLogoutHandler(srvc LogoutService, logger *zap.Logger) *LogoutHandler {
+	return &LogoutHandler{
+		srvc:   srvc,
+		logger: logger,
+	}
+}
 
 // Logout godoc
 // @Summary      Log out the current user
@@ -21,7 +34,7 @@ import (
 // @Failure      401  {object}  map[string]string  "missing or invalid token"
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/logout [post]
-func (h *AuthHandler) Logout(c *gin.Context) {
+func (h *LogoutHandler) Logout(c *gin.Context) {
 	authRequestsTotal.Inc()
 	id, err := middleware.GetUserID(c)
 	if err != nil {
@@ -33,7 +46,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	if err := h.authsrvc.LogoutUser(c.Request.Context(), id); err != nil {
+	if err := h.srvc.LogoutUser(c.Request.Context(), id); err != nil {
 		response.InternalServerError(c, err, "user failed to logout", h.logger)
 		return
 	}
