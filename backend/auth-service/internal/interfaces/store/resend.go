@@ -1,11 +1,12 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -24,7 +25,7 @@ func NewResendStore(rdb *redis.Client) *ResendStore {
 }
 
 func (s *ResendStore) ResendLimitAdd(ctx context.Context, email string) error {
-	key := fmt.Sprintf("%s%s", resendKey, email)
+	key := resendKey + email
 	if err := s.rdb.Set(ctx, key, email, resendTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
 	}
@@ -32,7 +33,7 @@ func (s *ResendStore) ResendLimitAdd(ctx context.Context, email string) error {
 }
 
 func (s *ResendStore) ResendLimitCheck(ctx context.Context, email string) (string, error) {
-	key := fmt.Sprintf("%s%s", resendKey, email)
+	key := resendKey + email
 	res, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) || res != "" {
