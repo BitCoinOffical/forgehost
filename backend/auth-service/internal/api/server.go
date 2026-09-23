@@ -50,25 +50,25 @@ func (s *Server) Run() error {
 	auth.Use(s.m.RateLimiter())
 	{
 
-		auth.POST("/register", s.h.Auth.Register)
-		auth.POST("/login", s.h.Auth.Login)
-		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Auth.Logout)
-		auth.POST("/refresh", s.h.Auth.UpdateAccessToken)
+		auth.POST("/register", s.h.Reg.Register)
+		auth.POST("/login", s.h.Login.Login)
+		auth.POST("/logout", s.m.AuthMiddleware(), s.h.Logout.Logout)
+		auth.POST("/refresh", s.h.Token.UpdateAccessToken)
 
-		auth.POST("/login/google", s.h.Auth.GoogleLoginAndroid) //android
+		auth.POST("/login/google", s.h.Oauth.GoogleLoginAndroid) //android
 
-		auth.GET("/login/google", s.h.Auth.GoogleLogin)             //web
-		auth.GET("/login/google/callback", s.h.Auth.GoogleCallback) //web
+		auth.GET("/login/google", s.h.Oauth.GoogleLogin)             //web
+		auth.GET("/login/google/callback", s.h.Oauth.GoogleCallback) //web
 
-		auth.POST("/verify-email", s.h.Auth.VerifyEmail)
-		auth.POST("/verify-email/resend", s.h.Auth.ResendVerifyEmail)
+		auth.POST("/verify-email", s.h.Reg.VerifyEmail)
+		auth.POST("/verify-email/resend", s.h.Reg.ResendVerifyEmail)
 
-		auth.PATCH("/password/update", s.m.AuthMiddleware(), s.h.Auth.UpdatePassword)
-		auth.POST("/password/reset", s.h.Auth.PasswordReset)
-		auth.POST("/password/reset/confirm", s.h.Auth.ConfirmPasswordReset)
-		auth.POST("/password/reset/resend", s.h.Auth.PasswordResetResend)
+		auth.PATCH("/password/update", s.m.AuthMiddleware(), s.h.Pass.UpdatePassword)
+		auth.POST("/password/reset", s.h.Pass.PasswordReset)
+		auth.POST("/password/reset/confirm", s.h.Pass.ConfirmPasswordReset)
+		auth.POST("/password/reset/resend", s.h.Pass.PasswordResetResend)
 
-		auth.POST("/exchange", s.h.Auth.Exchange)
+		auth.POST("/exchange", s.h.Oauth.Exchange)
 	}
 
 	return s.server.ListenAndServe()
