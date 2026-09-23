@@ -11,11 +11,27 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 const (
 	redirect_url = "http://localhost:3000/oauth/callback?code="
 )
+
+type GoogleAuthHandler struct {
+	srvc     GoogleAuthService
+	oauthCfg *oauth2.Config
+	logger   *zap.Logger
+}
+
+func NewGoogleAuthHandler(srvc GoogleAuthService, oauthCfg *oauth2.Config, logger *zap.Logger) *GoogleAuthHandler {
+	return &GoogleAuthHandler{
+		srvc:     srvc,
+		oauthCfg: oauthCfg,
+		logger:   logger,
+	}
+}
 
 // GoogleLogin godoc
 // @Summary      Start Google OAuth login (web)
@@ -25,7 +41,7 @@ const (
 // @Success      307  "redirect to Google consent screen"
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/login/google [get]
-func (h *AuthHandler) GoogleLogin(c *gin.Context) {
+func (h *GoogleAuthHandler) GoogleLogin(c *gin.Context) {
 	authRequestsTotal.Inc()
 	oauthState, err := jwtpkg.GenerateRandomString()
 	if err != nil {
@@ -61,7 +77,7 @@ func (h *AuthHandler) GoogleLogin(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Failure      502  {object}  map[string]string  "userinfo request failed"
 // @Router       /auth/login/google/callback [get]
-func (h *AuthHandler) GoogleCallback(c *gin.Context) {
+func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
 	authRequestsTotal.Inc()
 	storedId, err := c.Cookie("oauth_state")
 	if err != nil || c.Query("state") != storedId {
@@ -115,7 +131,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
-	oauthCode, err := h.authsrvc.GoogleCallback(c.Request.Context(), &req)
+	oauthCode, err := h.srvc.GoogleCallback(c.Request.Context(), &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed to register", h.logger)
 		return
@@ -135,7 +151,7 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 // @Failure      400      {object}  map[string]string  "invalid body"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/exchange [post]
-func (h *AuthHandler) Exchange(c *gin.Context) {
+func (h *GoogleAuthHandler) Exchange(c *gin.Context) {
 	authRequestsTotal.Inc()
 	var req dto.ExchangeRequestDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -143,7 +159,7 @@ func (h *AuthHandler) Exchange(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.Exchange(c.Request.Context(), &req)
+	tokens, err := h.srvc.Exchange(c.Request.Context(), &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed get tokens", h.logger)
 		return
@@ -164,7 +180,7 @@ func (h *AuthHandler) Exchange(c *gin.Context) {
 // @Failure      401      {object}  map[string]string  "invalid google token"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/login/google [post]
-func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
+func (h *GoogleAuthHandler) GoogleLoginAndroid(c *gin.Context) {
 	authRequestsTotal.Inc()
 	var req dto.GoogleAndroidUserDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
@@ -172,7 +188,7 @@ func (h *AuthHandler) GoogleLoginAndroid(c *gin.Context) {
 		return
 	}
 
-	tokens, err := h.authsrvc.GoogleLoginAndroid(c.Request.Context(), req)
+	tokens, err := h.srvc.GoogleLoginAndroid(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidGoogleToken) {
 			response.Unauthorized(c, err, "invalid google token", h.logger)
