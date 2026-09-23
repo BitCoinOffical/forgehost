@@ -1,11 +1,12 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -24,7 +25,7 @@ func NewSessionStore(rdb *redis.Client) *SessionStore {
 }
 
 func (s *SessionStore) SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
+	key := tokenKey + id.String()
 	if err := s.rdb.Set(ctx, key, value, RefreshTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
 	}
@@ -32,7 +33,7 @@ func (s *SessionStore) SaveToken(ctx context.Context, id uuid.UUID, value string
 }
 
 func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
+	key := tokenKey + id.String()
 	value, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -44,7 +45,7 @@ func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, erro
 }
 
 func (s *SessionStore) DeleteToken(ctx context.Context, id uuid.UUID) error {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
+	key := tokenKey + id.String()
 	if err := s.rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Del: %w", err)
 	}
