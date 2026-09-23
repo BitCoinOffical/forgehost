@@ -14,7 +14,38 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (string, error) {
+type GoogleAuthService struct {
+	repo         AuthRepository
+	codeStore    CodeStore
+	client       *kgo.Client
+	tokens       ManagerToken
+	sessionStore SessionStore
+	logger       *zap.Logger
+
+	WebgoogleClientID string
+}
+
+func NewGoogleAuthService(
+	repo AuthRepository,
+	codeStore CodeStore,
+	client *kgo.Client,
+	tokens ManagerToken,
+	sessionStore SessionStore,
+	logger *zap.Logger,
+	WebgoogleClientID string,
+) *GoogleAuthService {
+	return &GoogleAuthService{
+		repo:              repo,
+		codeStore:         codeStore,
+		client:            client,
+		tokens:            tokens,
+		sessionStore:      sessionStore,
+		logger:            logger,
+		WebgoogleClientID: WebgoogleClientID,
+	}
+}
+
+func (s *GoogleAuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO) (string, error) {
 	user := &models.User{
 		Name:          &req.Name,
 		Email:         req.Email,
@@ -65,7 +96,7 @@ func (s *AuthService) GoogleCallback(ctx context.Context, req *dto.GoogleUserDTO
 }
 
 // android
-func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndroidUserDTO) (*models.Tokens, error) {
+func (s *GoogleAuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndroidUserDTO) (*models.Tokens, error) {
 	payload, err := idtoken.Validate(ctx, req.IdToken, s.WebgoogleClientID) //android
 	if err != nil {
 		return nil, fmt.Errorf("idtoken.Validate: %w error: %v", domain.ErrInvalidGoogleToken, err)
@@ -123,7 +154,7 @@ func (s *AuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndr
 	}, nil
 }
 
-func (s *AuthService) Exchange(ctx context.Context, req *dto.ExchangeRequestDTO) (*models.Tokens, error) {
+func (s *GoogleAuthService) Exchange(ctx context.Context, req *dto.ExchangeRequestDTO) (*models.Tokens, error) {
 	userId, err := s.codeStore.GetOauthCode(ctx, req.Code)
 	if err != nil {
 		return nil, fmt.Errorf("s.codeStore.GetOauthCode: %w", err)
