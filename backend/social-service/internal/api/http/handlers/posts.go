@@ -8,7 +8,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -21,11 +20,11 @@ var postsRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 })
 
 type PostHandler struct {
-	srvc   *services.PostsService
+	srvc   PostsService
 	logger *zap.Logger
 }
 
-func NewPostHandler(srvc *services.PostsService, logger *zap.Logger) *PostHandler {
+func NewPostHandler(srvc PostsService, logger *zap.Logger) *PostHandler {
 	return &PostHandler{srvc: srvc, logger: logger}
 }
 
