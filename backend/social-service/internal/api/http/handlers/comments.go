@@ -6,7 +6,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -19,11 +18,11 @@ var comRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 })
 
 type CommentHandler struct {
-	srvc   *services.CommentsService
+	srvc   CommentsService
 	logger *zap.Logger
 }
 
-func NewCommentHandler(srvc *services.CommentsService, logger *zap.Logger) *CommentHandler {
+func NewCommentHandler(srvc CommentsService, logger *zap.Logger) *CommentHandler {
 	return &CommentHandler{srvc: srvc, logger: logger}
 }
 
