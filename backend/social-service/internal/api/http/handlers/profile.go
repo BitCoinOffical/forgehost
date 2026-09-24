@@ -8,7 +8,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -21,11 +20,11 @@ var profRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 })
 
 type ProfileHandler struct {
-	srvc   *services.ProfileService
+	srvc   ProfileService
 	logger *zap.Logger
 }
 
-func NewProfileHandler(srvc *services.ProfileService, logger *zap.Logger) *ProfileHandler {
+func NewProfileHandler(srvc ProfileService, logger *zap.Logger) *ProfileHandler {
 	return &ProfileHandler{srvc: srvc, logger: logger}
 }
 
