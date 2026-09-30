@@ -99,7 +99,7 @@ func (h *PostHandler) GetByID(c *gin.Context) {
 	postsRequestsTotal.Inc()
 	postId := c.Param("post_id")
 
-	res, err := h.srvc.GetPostById(c.Request.Context(), postId)
+	res, err := h.srvc.GetPostByID(c.Request.Context(), postId)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			response.NotFound(c, err, "post not found", h.logger)
