@@ -18,16 +18,21 @@ type CommentsRepo interface {
 	UnlikeComment(ctx context.Context, userId, commentId string) error
 }
 type PostsRepo interface {
-	GetPostById(ctx context.Context, id string) (*models.FeedPost, error)
+	GetPostByID(ctx context.Context, id string) (*models.FeedPost, error)
 	ViewPost(ctx context.Context, id string) error
 	GetSubPosts(ctx context.Context, id string) ([]models.FeedPost, []models.FeedPost, error)
 	GetGlobalPosts(ctx context.Context, postId *uuid.UUID, createdAt *time.Time) ([]models.FeedPost, error)
-	GetTopics(ctx context.Context) ([]models.Topics, error)
-	GetTopicsByID(ctx context.Context, id string) (*models.Topics, error)
 	CreatePost(ctx context.Context, post *models.Post) error
 	BuildUpdatePost(ctx context.Context, post *models.Post) (*models.Post, error)
-	DeletePost(ctx context.Context, postId, userId string) error
+	DeletePost(ctx context.Context, postId string, userId string) error
 	ReportPost(ctx context.Context, report *models.PostReport) error
+
+	GetTopics(ctx context.Context) ([]models.Topics, error)
+	GetTopicsByID(ctx context.Context, id string) (*models.Topics, error)
+	CreateTopic(ctx context.Context, topic *models.Topics) error
+	DeleteTopic(ctx context.Context, topic *models.Topics) error
+	ReportTopic(ctx context.Context, topic *models.TopicsReport) error
+
 	LikePost(ctx context.Context, userId, postId string) error
 	UnlikePost(ctx context.Context, userId, postId string) error
 }
