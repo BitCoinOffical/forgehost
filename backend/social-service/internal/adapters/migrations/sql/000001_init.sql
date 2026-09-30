@@ -2,6 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE profile_role AS ENUM ('user', 'admin');
+CREATE TYPE member_role AS ENUM ('member', 'moderator', 'owner') 
 
 CREATE TABLE IF NOT EXISTS profiles(
     user_id UUID PRIMARY KEY,
@@ -27,10 +28,13 @@ CREATE TABLE IF NOT EXISTS blocks(
 
 CREATE TABLE IF NOT EXISTS topics (
     id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL,
     title VARCHAR UNIQUE NOT NULL,
     is_delete BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS subscriptions (
@@ -115,6 +119,21 @@ CREATE TABLE IF NOT EXISTS post_reports (
     UNIQUE (user_id, post_id)
 );
 
+CREATE TABLE IF NOT EXISTS topic_reports (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    topic_id UUID NOT NULL,
+    cause VARCHAR,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id),
+    FOREIGN KEY (topic_id) REFERENCES topics(id),
+
+    UNIQUE (user_id, post_id)
+);
+
+
 CREATE TABLE IF NOT EXISTS comment_reports (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
@@ -142,6 +161,34 @@ CREATE TABLE IF NOT EXISTS profile_reports (
 
     UNIQUE (user_id, target_id)
 );
+
+CREATE TABLE IF NOT EXISTS chats (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    FOREIGN KEY (owner_id) REFERENCES profiles(user_id)
+)
+
+CREATE TABLE IN NOT EXISTS chat_bans (
+    chat_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    banned_by UUID NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+
+    PRIMARY KEY (chat_id, user_id),
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+)
+
+CREATE TABLE IN NOT EXISTS chat_members (
+    chat_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    role VARCHAR,
+    joined_at TIMESTAMP DEFAULT NOW(),
+
+    PRIMARY KEY (chat_id, user_id),
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
+)
 
 -- +goose Down
 DROP TABLE IF EXISTS profiles;
