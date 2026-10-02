@@ -89,6 +89,22 @@ func (s *Server) Run() error {
 		social.GET("/ws/message/chat/:chat_id")
 		social.GET("/ws/message/stream/:stream_id", s.h.Messager.SaveStreamMessage)
 
+		social.POST("/chats", s.h.Chats.CreateChat)
+		social.GET("/chats/:chat_id", s.h.Chats.GetChatByID)
+		social.DELETE("/chats/:chat_id", s.h.Chats.DeleteChat)
+		social.PATCH("/chats/:chat_id", s.h.Chats.UpdateChat)
+
+		social.POST("/chats/:chat_id/leave", s.h.Chats.LeaveChat)
+
+		social.GET("/chats/:chat_id/members", s.h.Chats.GetUsersFromChat)
+		social.POST("/chats/:chat_id/members", s.h.Chats.JoinInChat)
+		social.DELETE("/chats/:chat_id/members/:user_id", s.h.Chats.KickUserFromChat)
+		social.PATCH("/chats/:chat_id/members/:user_id/role", s.h.Chats.SetUserRoleChat)
+
+		social.POST("/chats/:chat_id/bans/:user_id", s.h.Chats.BanUser)
+		social.DELETE("/chats/:chat_id/bans/:user_id", s.h.Chats.UnbanUser)
+		social.GET("/chats/:chat_id/bans/:user_id", s.h.Chats.CheckBanUser)
+
 		social.GET("/search")
 	}
 
