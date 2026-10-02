@@ -1,7 +1,7 @@
 package consumers
 
 import (
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -13,7 +13,7 @@ type Services struct {
 }
 
 func NewServices(pool *pgxpool.Pool) *Services {
-	repo := repo.NewProfileRepo(pool)
+	repo := postgres.NewProfileRepo(pool)
 	service := services.NewProfileService(repo)
 
 	return &Services{

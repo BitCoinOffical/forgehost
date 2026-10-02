@@ -18,11 +18,11 @@ type Profile struct {
 }
 
 type Subscriptions struct {
-	UserId string `db:"user_id"`
+	UserID string `db:"user_id"`
 }
 
 type Subscribes struct {
-	TargetId string `db:"target_id"`
+	TargetID string `db:"target_id"`
 }
 
 type ProfileResponse struct {

@@ -78,6 +78,18 @@ func (s *Server) Run() error {
 		social.DELETE("/posts/:post_id/comments/:comment_id/like", s.h.Comments.Unlike)
 
 		social.GET("/topics", s.h.Posts.GetTopics)
+		social.GET("/topics/:topic_id", s.h.Posts.GetTopicByID)
+		social.POST("/topics", s.h.Posts.CreateTopic)
+		social.DELETE("/topics/:topic_id", s.h.Posts.DeleteTopic)
+		social.POST("/topics/report", s.h.Posts.ReportTopic)
+
+		social.GET("/message/chat/:chat_id")
+		social.GET("/message/stream/:stream_id", s.h.Messager.GetStreamHistory)
+
+		social.GET("/ws/message/chat/:chat_id")
+		social.GET("/ws/message/stream/:stream_id", s.h.Messager.SaveStreamMessage)
+
+		social.GET("/search")
 	}
 
 	return s.server.ListenAndServe()

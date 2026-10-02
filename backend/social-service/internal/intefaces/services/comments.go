@@ -16,18 +16,18 @@ func NewCommentsService(repo CommentsRepo) *CommentsService {
 	return &CommentsService{repo: repo}
 }
 
-func (s *CommentsService) ListComments(ctx context.Context, postId string) ([]models.FeedComments, error) {
-	coments, err := s.repo.ListComments(ctx, postId)
+func (s *CommentsService) ListComments(ctx context.Context, postID string) ([]models.FeedComments, error) {
+	comments, err := s.repo.ListComments(ctx, postID)
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.ListComments: %w", err)
 	}
-	return coments, nil
+	return comments, nil
 }
 
-func (s *CommentsService) CreateComment(ctx context.Context, postId, userId string, comment *dto.CreateCommentDTO) error {
+func (s *CommentsService) CreateComment(ctx context.Context, postID, userID string, comment *dto.CreateCommentDTO) error {
 	comm := models.Comments{
-		PostID:   postId,
-		UserID:   userId,
+		PostID:   postID,
+		UserID:   userID,
 		ParentID: comment.ParentID,
 		Body:     comment.Body,
 	}
@@ -37,11 +37,11 @@ func (s *CommentsService) CreateComment(ctx context.Context, postId, userId stri
 	return nil
 }
 
-func (s *CommentsService) UpdateComment(ctx context.Context, postId, userId, commentId string, comment *dto.UpdateCommentDTO) (*models.Comments, error) {
+func (s *CommentsService) UpdateComment(ctx context.Context, postID, userID, commentID string, comment *dto.UpdateCommentDTO) (*models.Comments, error) {
 	comm := models.Comments{
-		ID:     commentId,
-		PostID: postId,
-		UserID: userId,
+		ID:     commentID,
+		PostID: postID,
+		UserID: userID,
 		Body:   comment.Body,
 	}
 	cmt, err := s.repo.UpdateComment(ctx, &comm)
@@ -51,11 +51,11 @@ func (s *CommentsService) UpdateComment(ctx context.Context, postId, userId, com
 	return cmt, nil
 }
 
-func (s *CommentsService) DeleteComment(ctx context.Context, postId, userId, commentId string) error {
+func (s *CommentsService) DeleteComment(ctx context.Context, postID, userID, commentID string) error {
 	comm := models.Comments{
-		ID:     commentId,
-		PostID: postId,
-		UserID: userId,
+		ID:     commentID,
+		PostID: postID,
+		UserID: userID,
 	}
 
 	if err := s.repo.DeleteComment(ctx, &comm); err != nil {
@@ -65,10 +65,10 @@ func (s *CommentsService) DeleteComment(ctx context.Context, postId, userId, com
 	return nil
 }
 
-func (s *CommentsService) ReportComment(ctx context.Context, userId, commentId string, comment *dto.ReportCommentDTO) error {
+func (s *CommentsService) ReportComment(ctx context.Context, userID, commentID string, comment *dto.ReportCommentDTO) error {
 	comm := models.CommentReport{
-		CommentId: commentId,
-		UserId:    userId,
+		CommentID: commentID,
+		UserID:    userID,
 		Cause:     comment.Cause,
 	}
 
@@ -79,15 +79,16 @@ func (s *CommentsService) ReportComment(ctx context.Context, userId, commentId s
 	return nil
 }
 
-func (s *CommentsService) LikeComment(ctx context.Context, userId, comentId string) error {
-	if err := s.repo.LikeComment(ctx, userId, comentId); err != nil {
+func (s *CommentsService) LikeComment(ctx context.Context, userID, commentID string) error {
+	if err := s.repo.LikeComment(ctx, userID, commentID); err != nil {
 		return fmt.Errorf("s.repo.LikeComment: %w", err)
 	}
 
 	return nil
 }
-func (s *CommentsService) UnlikeComment(ctx context.Context, userId, comentId string) error {
-	if err := s.repo.UnlikeComment(ctx, userId, comentId); err != nil {
+
+func (s *CommentsService) UnlikeComment(ctx context.Context, userID, commentID string) error {
+	if err := s.repo.UnlikeComment(ctx, userID, commentID); err != nil {
 		return fmt.Errorf("s.repo.UnlikeComment: %w", err)
 	}
 
