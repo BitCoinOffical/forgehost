@@ -11,6 +11,7 @@ import (
 	_ "github.com/BitCoinOffical/forgehost/social-service/docs"
 	kafkaread "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/kafka"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/migrations"
+	mongodb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/mongo"
 	postgresdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/postgres"
 	redisdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/redis"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api"
@@ -23,7 +24,9 @@ import (
 )
 
 const (
-	logPath = "logs/social.log"
+	logPath                 = "logs/social.log"
+	mongoMessagerDataBase   = "chat"
+	mongoMessagerCollection = "messages"
 )
 
 // @title Social Service API
@@ -101,6 +104,15 @@ func main() {
 	}
 	logger.Info("redis for rate limitter applied successfully")
 
+	mongo, err := mongodb.NewMongoConnect(&mongodb.MongoConfig{
+		MongoHost: cfg.Mongo.MongoHost,
+		MongoPort: cfg.Mongo.MongoPort,
+	}, mongoMessagerDataBase, mongoMessagerCollection)
+	if err != nil {
+		logger.Fatal("mongo failed", zap.Error(err))
+	}
+	logger.Info("mongo applied successfully")
+
 	srv := consumers.NewServices(pool)
 	cons := consumers.NewConsumers(srv, client, logger)
 
@@ -113,7 +125,7 @@ func main() {
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	m := middleware.NewMiddleware(rate, logger, manager)
-	s := handlers.NewServices(pool, cache)
+	s := handlers.NewServices(pool, cache, mongo)
 	h := handlers.NewHandlers(s, logger)
 
 	serv := api.NewServer(&config.AppConfig{

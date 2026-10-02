@@ -17,6 +17,7 @@ type Config struct {
 	Postgres PostgresConfig
 	Kafka    KafkaConfig
 	Redis    RedisConfig
+	Mongo    MongoConfig
 	App      AppConfig
 }
 
@@ -44,6 +45,11 @@ type RedisConfig struct {
 	RDBPass string `env:"RDB_PASS,required"`
 }
 
+type MongoConfig struct {
+	MongoHost string `env:"MONGO_HOST,required"`
+	MongoPort string `env:"MONGO_PORT,required"`
+}
+
 type AppConfig struct {
 	DebugLevel string `env:"DEBUG_LEVEL,required"`
 	Secret     string `env:"JWT_SECRET,required"`
@@ -66,6 +72,10 @@ func NewLoad() (*Config, error) {
 	}
 
 	if err := env.Parse(&cfg.Redis); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Mongo); err != nil {
 		return nil, err
 	}
 

@@ -12,6 +12,7 @@ var ErrInvalidGoogleToken = errors.New("invalid google token")
 var ErrInvalidCode = errors.New("incorrect or expired code")
 var ErrEmptyValue = errors.New("value is empty")
 var ErrForbidden = errors.New("insufficient privileges")
+var ErrCannotKickOwner = errors.New("cannot kick owner")
 
 // resend
 var ErrToManyRequest = errors.New("to many request")

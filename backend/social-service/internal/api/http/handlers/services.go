@@ -62,6 +62,7 @@ type Services struct {
 	post    PostsService
 	coms    CommentsService
 	msgs    *services.MessageService
+	chat    *services.ChatService
 }
 
 func NewServices(pool *pgxpool.Pool, rdb *redis.Client, coll *mongo.Collection) *Services {
@@ -79,7 +80,10 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client, coll *mongo.Collection) 
 	msgsstore := store.NewStreamStore(rdb)
 	msgs := services.NewMessageService(msgsrepo, msgsstore)
 
-	return &Services{profile: profile, post: post, coms: coms, msgs: msgs}
+	chatrepo := postgres.NewChatsRepo(pool)
+	chat := services.NewChatService(chatrepo)
+
+	return &Services{profile: profile, post: post, coms: coms, msgs: msgs, chat: chat}
 }
 
 type Handlers struct {
@@ -87,6 +91,7 @@ type Handlers struct {
 	Posts    *PostHandler
 	Comments *CommentHandler
 	Messager *MessagerHandler
+	Chats    *ChatHandler
 }
 
 func NewHandlers(srvc *Services, logger *zap.Logger) *Handlers {
@@ -94,5 +99,6 @@ func NewHandlers(srvc *Services, logger *zap.Logger) *Handlers {
 	profile := NewProfileHandler(srvc.profile, logger)
 	posts := NewPostHandler(srvc.post, logger)
 	messager := NewMessagerHandler(srvc.msgs, logger)
-	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Messager: messager}
+	chat := NewChatHandler(srvc.chat, logger)
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Messager: messager, Chats: chat}
 }
