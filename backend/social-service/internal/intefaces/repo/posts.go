@@ -257,7 +257,7 @@ func (r *PostsRepo) GetTopicsByID(ctx context.Context, id string) (*models.Topic
 
 func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
 	sql := `INSERT INTO posts (topic_id, user_id, image_url, description) VALUES ($1, $2, $3, $4)`
-	_, err := r.pool.Exec(ctx, sql, post.TopicId, post.UserID, post.ImageURL, post.Description)
+	_, err := r.pool.Exec(ctx, sql, post.TopicID, post.UserID, post.ImageURL, post.Description)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
@@ -291,7 +291,7 @@ func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*mo
 
 	var resp models.Post
 	if err := r.pool.QueryRow(ctx, query, args...).Scan(
-		&resp.TopicId,
+		&resp.TopicID,
 		&resp.UserID,
 		&resp.ImageURL,
 		&resp.Description,
@@ -316,7 +316,7 @@ func (r *PostsRepo) DeletePost(ctx context.Context, postId string, userId string
 
 func (r *PostsRepo) ReportPost(ctx context.Context, report *models.PostReport) error {
 	sql := `INSERT INTO post_reports (user_id, post_id, cause) VALUES ($1, $2, $3)`
-	_, err := r.pool.Exec(ctx, sql, report.UserId, report.PostId, report.Cause)
+	_, err := r.pool.Exec(ctx, sql, report.UserID, report.PostID, report.Cause)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
