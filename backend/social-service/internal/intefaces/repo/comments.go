@@ -98,7 +98,7 @@ func (r *CommentsRepo) DeleteComment(ctx context.Context, comment *models.Commen
 
 func (r *CommentsRepo) ReportComment(ctx context.Context, comment *models.CommentReport) error {
 	sql := `INSERT INTO comment_reports (user_id, comment_id, cause) VALUES ($1, $2, $3)`
-	_, err := r.pool.Exec(ctx, sql, comment.UserId, comment.CommentId, comment.Cause)
+	_, err := r.pool.Exec(ctx, sql, comment.UserID, comment.CommentID, comment.Cause)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
