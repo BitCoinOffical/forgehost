@@ -197,7 +197,7 @@ func (r *ProfileRepo) GetSubscriptions(ctx context.Context, id string) ([]models
 	}
 	for rows.Next() {
 		var sub models.Subscriptions
-		if err := rows.Scan(&sub.UserId); err != nil {
+		if err := rows.Scan(&sub.UserID); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 		subs = append(subs, sub)
@@ -218,7 +218,7 @@ func (r *ProfileRepo) GetSubscribers(ctx context.Context, id string) ([]models.S
 	}
 	for rows.Next() {
 		var subcr models.Subscribes
-		if err := rows.Scan(&subcr.TargetId); err != nil {
+		if err := rows.Scan(&subcr.TargetID); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 		subscr = append(subscr, subcr)
