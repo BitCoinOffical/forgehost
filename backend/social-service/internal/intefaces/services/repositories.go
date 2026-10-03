@@ -51,4 +51,5 @@ type ProfileRepo interface {
 	Subscribe(ctx context.Context, userId, targetId string) error
 	UnSubscribe(ctx context.Context, userId, targetId string) error
 	CreateProfileReport(ctx context.Context, userId, targetId, cause string) error
+	Block(ctx context.Context, userID, targetID string) error
 }
