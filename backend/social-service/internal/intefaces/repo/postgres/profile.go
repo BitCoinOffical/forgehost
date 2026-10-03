@@ -117,9 +117,9 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 	return &resp, fds, nil
 }
 
-func (r *ProfileRepo) SaveProfile(ctx context.Context, userId string) error {
+func (r *ProfileRepo) SaveProfile(ctx context.Context, userID string) error {
 	sql := `INSERT INTO profiles (user_id, created_at, updated_at) VALUES ($1, NOW(), NOW())`
-	if _, err := r.pool.Exec(ctx, sql, userId); err != nil {
+	if _, err := r.pool.Exec(ctx, sql, userID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return fmt.Errorf("profile alredy exists: %w", domain.ErrAlreadyExists)
@@ -234,9 +234,9 @@ func (r *ProfileRepo) GetSubscribers(ctx context.Context, id string) ([]models.S
 	return subscr, nil
 }
 
-func (r *ProfileRepo) Subscribe(ctx context.Context, userId, targetId string) error {
+func (r *ProfileRepo) Subscribe(ctx context.Context, userID, targetID string) error {
 	sql := `INSERT INTO subscriptions (user_id, target_id, created_at) VALUES ($1, $2, NOW())`
-	_, err := r.pool.Exec(ctx, sql, userId, targetId)
+	_, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
@@ -247,18 +247,27 @@ func (r *ProfileRepo) Subscribe(ctx context.Context, userId, targetId string) er
 	return nil
 }
 
-func (r *ProfileRepo) UnSubscribe(ctx context.Context, userId, targetId string) error {
+func (r *ProfileRepo) UnSubscribe(ctx context.Context, userID, targetID string) error {
 	sql := `DELETE FROM subscriptions WHERE user_id = $1 AND target_id = $2`
-	_, err := r.pool.Exec(ctx, sql, userId, targetId)
+	_, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
 	return nil
 }
 
-func (r *ProfileRepo) CreateProfileReport(ctx context.Context, userId, targetId, cause string) error {
+func (r *ProfileRepo) CreateProfileReport(ctx context.Context, userID, targetID, cause string) error {
 	sql := `INSERT INTO profile_reports (user_id, target_id, cause, created_at, updated_at) VALUES $1, $2, $3, NOW(), NOW()`
-	_, err := r.pool.Exec(ctx, sql, userId, targetId, cause)
+	_, err := r.pool.Exec(ctx, sql, userID, targetID, cause)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
+}
+
+func (r *ProfileRepo) Block(ctx context.Context, userID, targetID string) error {
+	sql := `INSERT INTO blocks (user_id, target_id) VALUES ($1, $2)`
+	_, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
