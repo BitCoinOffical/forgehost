@@ -13,6 +13,7 @@ var ErrInvalidCode = errors.New("incorrect or expired code")
 var ErrEmptyValue = errors.New("value is empty")
 var ErrForbidden = errors.New("insufficient privileges")
 var ErrCannotKickOwner = errors.New("cannot kick owner")
+var ErrUserOffline = errors.New("user offline")
 
 // resend
 var ErrToManyRequest = errors.New("to many request")
