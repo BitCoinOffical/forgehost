@@ -89,3 +89,10 @@ func (r *ProfileService) Report(ctx context.Context, userId, targetId string, re
 	}
 	return nil
 }
+
+func (r *ProfileService) Block(ctx context.Context, userId, targetId string) error {
+	if err := r.repo.Block(ctx, userId, targetId); err != nil {
+		return fmt.Errorf("r.repo.Block: %w", err)
+	}
+	return nil
+}
