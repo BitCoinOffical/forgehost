@@ -1,5 +1,5 @@
 package dto
 
 type MessageDTO struct {
-	Content string `json:"content"`
+	Text string `json:"text"`
 }

@@ -18,7 +18,6 @@ func NewMessagerRepo(coll *mongo.Collection) *MessagerRepo {
 	return &MessagerRepo{coll: coll}
 }
 
-// for group and room
 func (r *MessagerRepo) SaveMessage(ctx context.Context, msg *models.Message) (*bson.ObjectID, error) {
 	res, err := r.coll.InsertOne(ctx, msg)
 	if err != nil {
@@ -33,8 +32,8 @@ func (r *MessagerRepo) SaveMessage(ctx context.Context, msg *models.Message) (*b
 	return &objID, nil
 }
 
-func (r *MessagerRepo) GetMessages(ctx context.Context, id string) ([]models.Message, error) {
-	filter := bson.M{"chat_id": id}
+func (r *MessagerRepo) GetMessages(ctx context.Context, chatID string) ([]models.Message, error) {
+	filter := bson.M{"chat_id": chatID}
 	cursor, err := r.coll.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("r.coll.Find: %w", err)

@@ -6,13 +6,10 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
-	mongorepo "github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/mongo"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/store"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -25,6 +22,7 @@ type ProfileService interface {
 	Subscribe(ctx context.Context, userId, targetId string) error
 	UnSubscribe(ctx context.Context, userId, targetId string) error
 	Report(ctx context.Context, userId, targetId string, req *dto.ReportDTO) error
+	Block(ctx context.Context, userId, targetId string) error
 }
 
 type CommentsService interface {
@@ -61,11 +59,10 @@ type Services struct {
 	profile ProfileService
 	post    PostsService
 	coms    CommentsService
-	msgs    *services.MessageService
 	chat    *services.ChatService
 }
 
-func NewServices(pool *pgxpool.Pool, rdb *redis.Client, coll *mongo.Collection) *Services {
+func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
 	profrepo := postgres.NewProfileRepo(pool)
 	profile := services.NewProfileService(profrepo)
 
@@ -76,21 +73,16 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client, coll *mongo.Collection) 
 	comrepo := postgres.NewCommentsRepo(pool)
 	coms := services.NewCommentsService(comrepo)
 
-	msgsrepo := mongorepo.NewMessagerRepo(coll)
-	msgsstore := store.NewStreamStore(rdb)
-	msgs := services.NewMessageService(msgsrepo, msgsstore)
-
 	chatrepo := postgres.NewChatsRepo(pool)
 	chat := services.NewChatService(chatrepo)
 
-	return &Services{profile: profile, post: post, coms: coms, msgs: msgs, chat: chat}
+	return &Services{profile: profile, post: post, coms: coms, chat: chat}
 }
 
 type Handlers struct {
 	Profile  *ProfileHandler
 	Posts    *PostHandler
 	Comments *CommentHandler
-	Messager *MessagerHandler
 	Chats    *ChatHandler
 }
 
@@ -98,7 +90,6 @@ func NewHandlers(srvc *Services, logger *zap.Logger) *Handlers {
 	comments := NewCommentHandler(srvc.coms, logger)
 	profile := NewProfileHandler(srvc.profile, logger)
 	posts := NewPostHandler(srvc.post, logger)
-	messager := NewMessagerHandler(srvc.msgs, logger)
 	chat := NewChatHandler(srvc.chat, logger)
-	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Messager: messager, Chats: chat}
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat}
 }

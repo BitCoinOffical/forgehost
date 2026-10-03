@@ -17,6 +17,7 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/http/handlers"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/api/ws"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/consumers"
 	jwtpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/jwt"
 	loggerpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/logger"
@@ -124,15 +125,18 @@ func main() {
 	}()
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
-	m := middleware.NewMiddleware(rate, logger, manager)
-	s := handlers.NewServices(pool, cache, mongo)
-	h := handlers.NewHandlers(s, logger)
+	mdlwr := middleware.NewMiddleware(rate, logger, manager)
+	srvcs := handlers.NewServices(pool, cache)
+	handlrs := handlers.NewHandlers(srvcs, logger)
+
+	wsSrvc := ws.NewWebSockerServices(mongo, cache, pool)
+	ws := ws.NewWebSockerHandlers(wsSrvc, logger)
 
 	serv := api.NewServer(&config.AppConfig{
 		DebugLevel: cfg.App.DebugLevel,
 		Port:       cfg.App.Port,
 		Secret:     cfg.App.Secret,
-	}, m, h)
+	}, mdlwr, handlrs, ws)
 
 	go func() {
 		if err := serv.Run(); err != nil {
