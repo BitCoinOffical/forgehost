@@ -258,3 +258,20 @@ func (h *ProfileHandler) Report(c *gin.Context) {
 
 	c.Status(http.StatusCreated)
 }
+
+func (h *ProfileHandler) Block(c *gin.Context) {
+	profRequestsTotal.Inc()
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+	targetID := c.Param("user_id")
+
+	if err := h.srvc.Block(c.Request.Context(), userID, targetID); err != nil {
+		response.InternalServerError(c, err, "failed block user", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
