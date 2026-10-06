@@ -87,7 +87,10 @@ func (s *Server) Run() error {
 		social.DELETE("/topics/:topic_id", s.h.Posts.DeleteTopic)
 		social.POST("/topics/report", s.h.Posts.ReportTopic)
 
-		social.POST("/chats", s.h.Chats.CreateChat)
+		social.POST("/chats", s.h.Chats.CreateGroup)
+		social.POST("/chats/directs/:user_id", s.h.Chats.CreateDirect)
+		social.GET("/chats/list", s.h.Chats.GetChatList)
+		social.POST("/chats/:chat_id/read", s.h.Chats.MarkAsRead)
 		social.GET("/chats/:chat_id", s.h.Chats.GetChatByID)
 		social.DELETE("/chats/:chat_id", s.h.Chats.DeleteChat)
 		social.PATCH("/chats/:chat_id", s.h.Chats.UpdateChat)
@@ -104,10 +107,23 @@ func (s *Server) Run() error {
 		social.GET("/chats/:chat_id/bans/:user_id", s.h.Chats.CheckBanUser)
 
 		social.GET("/message/chat/:chat_id", s.ws.Msgs.GetChatHistory)
-		social.GET("/message/stream/:stream_id", s.ws.Msgs.GetStreamHistory)
+		social.GET("/message/stream/:stream_id", s.ws.Strms.GetStreamHistory)
 
-		social.GET("/ws/message/chat/:chat_id", s.ws.Msgs.SendMessage)
-		social.GET("/ws/message/stream/:stream_id", s.ws.Msgs.SaveStreamMessage)
+		social.GET("/youtube/connect")
+		social.GET("/youtube/callback")
+		social.GET("/youtube/status")
+		social.DELETE("/youtube/connection")
+
+		social.POST("/streams")
+		social.GET("/streams/list")
+		social.DELETE("/streams/:stream_id")
+		social.GET("/streams/:stream_id/events")
+
+		social.GET("/ws/connect")
+
+		social.GET("/ws/message/group/:chat_id", s.ws.Msgs.SendMessageGroup)
+		social.GET("/ws/message/direct/:chat_id", s.ws.Msgs.SendMessageDirect)
+		social.GET("/ws/message/stream/:stream_id", s.ws.Strms.SendStreamMessage)
 
 		social.GET("/search")
 	}
