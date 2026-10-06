@@ -2,11 +2,11 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE profile_role AS ENUM ('user', 'admin');
-CREATE TYPE member_role AS ENUM ('member', 'moderator', 'owner') 
+CREATE TYPE member_role AS ENUM ('member', 'moderator', 'owner'); 
 
 CREATE TABLE IF NOT EXISTS profiles(
     user_id UUID PRIMARY KEY,
-    username VARCHAR UNIQUE,
+    username VARCHAR UNIQUE NOT NULL,
     bio VARCHAR(4096),
     avatar_url VARCHAR,
     role profile_role NOT NULL DEFAULT 'user',
@@ -162,33 +162,58 @@ CREATE TABLE IF NOT EXISTS profile_reports (
     UNIQUE (user_id, target_id)
 );
 
+CREATE TABLE IF NOT EXISTS directs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_a_id UUID NOT NULL,
+    user_b_id UUID NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    FOREIGN KEY (user_a_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_b_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    UNIQUE (user_a_id, user_b_id)
+);
+
 CREATE TABLE IF NOT EXISTS chats (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR,
+    description VARCHAR,
     owner_id UUID NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
+    
 
-    FOREIGN KEY (owner_id) REFERENCES profiles(user_id)
-)
+    FOREIGN KEY (owner_id) REFERENCES profiles(user_id) ON DELETE CASCADE
+);
 
-CREATE TABLE IN NOT EXISTS chat_bans (
+CREATE TABLE IF NOT EXISTS chat_bans (
     chat_id UUID NOT NULL,
     user_id UUID NOT NULL,
     banned_by UUID NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
 
     PRIMARY KEY (chat_id, user_id),
-    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
-)
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (banned_by) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+);
 
-CREATE TABLE IN NOT EXISTS chat_members (
+CREATE TABLE IF NOT EXISTS chat_members (
     chat_id UUID NOT NULL,
     user_id UUID NOT NULL,
-    role VARCHAR,
+    role member_role DEFAULT 'member',
     joined_at TIMESTAMP DEFAULT NOW(),
 
     PRIMARY KEY (chat_id, user_id),
-    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
-)
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_reads (
+    chat_id       UUID NOT NULL,
+    user_id       UUID NOT NULL,
+    last_read_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (chat_id, user_id)
+);
 
 -- +goose Down
 DROP TABLE IF EXISTS profiles;
