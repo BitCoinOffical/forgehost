@@ -107,23 +107,23 @@ func (s *Server) Run() error {
 		social.GET("/chats/:chat_id/bans/:user_id", s.h.Chats.CheckBanUser)
 
 		social.GET("/message/chat/:chat_id", s.ws.Msgs.GetChatHistory)
-		social.GET("/message/stream/:stream_id", s.ws.Strms.GetStreamHistory)
+		social.GET("/message/stream/:video_id", s.ws.Strms.GetStreamHistory)
 
-		social.GET("/youtube/connect")
-		social.GET("/youtube/callback")
-		social.GET("/youtube/status")
-		social.DELETE("/youtube/connection")
+		social.GET("/youtube/connect", s.h.Stream.GoogleLogin)
+		social.GET("/youtube/callback", s.h.Stream.GoogleCallback)
+		social.GET("/youtube/channel", s.h.Stream.GetChannel)
 
-		social.POST("/streams")
-		social.GET("/streams/list")
-		social.DELETE("/streams/:stream_id")
-		social.GET("/streams/:stream_id/events")
+		social.POST("/streams", s.h.Stream.SaveStream)
+		social.GET("/streams/list", s.h.Stream.GetCursorStreams)
+		social.GET("/streams/:video_id", s.h.Stream.GetStream)
+		social.DELETE("/streams/:video_id", s.h.Stream.DeleteStream)
+		social.PATCH("/streams/:video_id", s.h.Stream.BuildUpdateStream)
 
-		social.GET("/ws/connect")
+		social.GET("/ws/connect", s.ws.Msgs.Connect)
 
 		social.GET("/ws/message/group/:chat_id", s.ws.Msgs.SendMessageGroup)
 		social.GET("/ws/message/direct/:chat_id", s.ws.Msgs.SendMessageDirect)
-		social.GET("/ws/message/stream/:stream_id", s.ws.Strms.SendStreamMessage)
+		social.GET("/ws/message/stream/:video_id", s.ws.Strms.SendStreamMessage)
 
 		social.GET("/search")
 	}
