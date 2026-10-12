@@ -70,13 +70,8 @@ func (h *PostHandler) GetSubPosts(c *gin.Context) {
 func (h *PostHandler) GetGlobalPosts(c *gin.Context) {
 	postsRequestsTotal.Inc()
 	cursor := c.Param("cursor")
-	id, err := middleware.GetUserID(c)
-	if err != nil {
-		response.Unauthorized(c, err, "failed get user id", h.logger)
-		return
-	}
 
-	posts, err := h.srvc.GetGlobalPosts(c.Request.Context(), id, cursor)
+	posts, err := h.srvc.GetGlobalPosts(c.Request.Context(), cursor)
 	if err != nil {
 		response.InternalServerError(c, err, "failed get global posts", h.logger)
 		return
@@ -318,7 +313,8 @@ func (h *PostHandler) ReportTopic(c *gin.Context) {
 // @Router       /social/posts/{post_id} [patch]
 func (h *PostHandler) Update(c *gin.Context) {
 	postsRequestsTotal.Inc()
-	id, err := middleware.GetUserID(c)
+	postID := c.Param("post_id")
+	userID, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
 		return
@@ -330,7 +326,7 @@ func (h *PostHandler) Update(c *gin.Context) {
 		return
 	}
 
-	res, err := h.srvc.UpdatePost(c.Request.Context(), &req, id)
+	res, err := h.srvc.UpdatePost(c.Request.Context(), &req, postID, userID)
 	if err != nil {
 		response.InternalServerError(c, err, "failed update post by id", h.logger)
 		return
