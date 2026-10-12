@@ -22,6 +22,9 @@ import (
 	jwtpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/jwt"
 	loggerpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/logger"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	yt "google.golang.org/api/youtube/v3"
 )
 
 const (
@@ -127,9 +130,17 @@ func main() {
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	mdlwr := middleware.NewMiddleware(rate, logger, manager)
 	srvcs := handlers.NewServices(pool, cache)
-	handlrs := handlers.NewHandlers(srvcs, logger)
+	handlrs := handlers.NewHandlers(srvcs, logger, &oauth2.Config{
+		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
+		ClientID:     cfg.WebGoogle.WebClientID,
+		ClientSecret: cfg.WebGoogle.WebClientSecret,
+		Scopes: []string{
+			yt.YoutubeReadonlyScope,
+		},
+		Endpoint: google.Endpoint,
+	})
 
-	wsSrvc := ws.NewWebSockerServices(mongo, cache, pool)
+	wsSrvc := ws.NewWebSockerServices(mongo, cache, pool, logger)
 	ws := ws.NewWebSockerHandlers(wsSrvc, logger)
 
 	serv := api.NewServer(&config.AppConfig{
