@@ -14,17 +14,22 @@ const (
 type Env string
 
 type Config struct {
-	Postgres PostgresConfig
-	Kafka    KafkaConfig
-	Redis    RedisConfig
-	Mongo    MongoConfig
-	App      AppConfig
+	WebGoogle WebGoogleConfig
+	Postgres  PostgresConfig
+	Kafka     KafkaConfig
+	Redis     RedisConfig
+	Mongo     MongoConfig
+	App       AppConfig
 }
 
 type KafkaConfig struct {
 	Addr string `env:"KAFKA_ADDR,required"`
 }
-
+type WebGoogleConfig struct {
+	WebClientID     string `env:"WEB_GOOGLE_CLIENT_ID,required"`
+	WebClientSecret string `env:"WEB_GOOGLE_CLIENT_SECRET,required"`
+	WebRedirectURL  string `env:"WEB_GOOGLE_REDIRECT_URL,required"`
+}
 type PostgresConfig struct {
 	DBUser     string `env:"DB_USER,required"`
 	DBPassword string `env:"DB_PASSWORD,required"`
@@ -64,6 +69,10 @@ func NewLoad() (*Config, error) {
 	}
 
 	if err := env.Parse(&cfg.Kafka); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.WebGoogle); err != nil {
 		return nil, err
 	}
 
