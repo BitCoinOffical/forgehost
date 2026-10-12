@@ -3,9 +3,11 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TYPE profile_role AS ENUM ('user', 'admin');
 CREATE TYPE member_role AS ENUM ('member', 'moderator', 'owner'); 
+CREATE TYPE stream_status AS ENUM ('created', 'ready', 'test_starting', 'testing', 'live_starting', 'live', 'complete', 'revoked');
 
 CREATE TABLE IF NOT EXISTS profiles(
     user_id UUID PRIMARY KEY,
+    channel_id UUID UNIQUE,
     username VARCHAR UNIQUE NOT NULL,
     bio VARCHAR(4096),
     avatar_url VARCHAR,
@@ -213,6 +215,23 @@ CREATE TABLE IF NOT EXISTS chat_reads (
     last_read_at  TIMESTAMP NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (chat_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS streams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    video_id VARCHAR NOT NULL,
+    title VARCHAR NOT NULL,
+    status stream_status NOT NULL,
+    embed_url VARCHAR NOT NULL,
+    viewers INTEGER NOT NULL,
+    likes INTEGER NOT NULL,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id),
+    UNIQUE(user_id, video_id)
 );
 
 -- +goose Down
