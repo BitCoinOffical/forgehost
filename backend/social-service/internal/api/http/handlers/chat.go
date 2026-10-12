@@ -22,24 +22,79 @@ func NewChatHandler(srvc *services.ChatService, logger *zap.Logger) *ChatHandler
 	return &ChatHandler{srvc: srvc, logger: logger}
 }
 
-func (h *ChatHandler) CreateChat(c *gin.Context) {
+func (h *ChatHandler) CreateGroup(c *gin.Context) {
 	ownerID, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
 		return
 	}
+
 	var req dto.CreateChatDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
-	chatID, err := h.srvc.CreateChat(c.Request.Context(), ownerID, &req)
+
+	chatID, err := h.srvc.CreateGroup(c.Request.Context(), ownerID, &req)
 	if err != nil {
-		response.InternalServerError(c, err, "failed create chat", h.logger)
+		response.InternalServerError(c, err, "failed create group chat", h.logger)
 		return
 	}
 
 	c.JSON(http.StatusCreated, chatID)
+}
+
+func (h *ChatHandler) CreateDirect(c *gin.Context) {
+	targetID := c.Param("user_id")
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	chatID, err := h.srvc.CreateDirect(c.Request.Context(), userID, targetID)
+	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
+		response.InternalServerError(c, err, "failed create direct chat", h.logger)
+		return
+	}
+
+	c.JSON(http.StatusCreated, chatID)
+}
+
+func (h *ChatHandler) GetChatList(c *gin.Context) {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	resp, err := h.srvc.GetChatList(c.Request.Context(), userID)
+	if err != nil {
+		response.InternalServerError(c, err, "failed get chat list", h.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *ChatHandler) MarkAsRead(c *gin.Context) {
+	chatID := c.Param("chat_id")
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	if err := h.srvc.MarkAsRead(c.Request.Context(), chatID, userID); err != nil {
+		response.InternalServerError(c, err, "failed mark as read", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 func (h *ChatHandler) GetChatByID(c *gin.Context) {
@@ -103,6 +158,10 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 	}
 	resp, err := h.srvc.BuildUpdateChat(c.Request.Context(), chatID, userID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed update chat", h.logger)
 		return
 	}
@@ -124,6 +183,10 @@ func (h *ChatHandler) SetUserRoleChat(c *gin.Context) {
 	}
 	member, err := h.srvc.SetUserRoleChat(c.Request.Context(), chatID, ownerID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed set role", h.logger)
 		return
 	}
@@ -155,6 +218,10 @@ func (h *ChatHandler) KickUserFromChat(c *gin.Context) {
 	}
 
 	if err := h.srvc.KickUserFromChat(c.Request.Context(), chatID, targetID, userID); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed kick user from chat", h.logger)
 		return
 	}
@@ -183,6 +250,10 @@ func (h *ChatHandler) BanUser(c *gin.Context) {
 	}
 
 	if err := h.srvc.BanUser(c.Request.Context(), chatID, targetID, userID); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed ban user from chat", h.logger)
 		return
 	}
@@ -200,6 +271,10 @@ func (h *ChatHandler) UnbanUser(c *gin.Context) {
 	}
 
 	if err := h.srvc.UnbanUser(c.Request.Context(), chatID, targetID, userID); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed unban user", h.logger)
 		return
 	}

@@ -44,7 +44,7 @@ func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.Fee
 	return result, nil
 }
 
-func (r *PostsService) GetGlobalPosts(ctx context.Context, id, cursor string) ([]models.FeedPost, error) {
+func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]models.FeedPost, error) {
 	var req dto.CursorDTO
 	var postID *uuid.UUID
 	if cursor != "" {
@@ -139,10 +139,10 @@ func (r *PostsService) ReportTopic(ctx context.Context, userID, topicID string, 
 	return nil
 }
 
-func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, id string) error {
+func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, userID string) error {
 	post := models.Post{
 		TopicID:     req.TopicID,
-		UserID:      id,
+		UserID:      userID,
 		ImageURL:    &req.ImageUrl,
 		Description: &req.Description,
 	}
@@ -153,13 +153,13 @@ func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, i
 	return nil
 }
 
-func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, id string) (*models.Post, error) {
+func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, postID, userID string) (*models.Post, error) {
 	post := models.Post{
-		ID:          req.PostID,
+		ID:          postID,
 		TopicID:     req.TopicID,
-		ImageURL:    &req.ImageUrl,
-		Description: &req.Description,
-		UserID:      id,
+		ImageURL:    req.ImageUrl,
+		Description: req.Description,
+		UserID:      userID,
 	}
 	res, err := r.repo.BuildUpdatePost(ctx, &post)
 	if err != nil {

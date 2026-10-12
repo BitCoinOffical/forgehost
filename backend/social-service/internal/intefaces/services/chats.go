@@ -17,18 +17,49 @@ type ChatService struct {
 func NewChatService(repo *postgres.ChatsRepo) *ChatService {
 	return &ChatService{repo: repo}
 }
-func (s *ChatService) CreateChat(ctx context.Context, ownerID string, req *dto.CreateChatDTO) (string, error) {
+func (s *ChatService) CreateGroup(ctx context.Context, ownerID string, req *dto.CreateChatDTO) (string, error) {
 	chat := models.Chat{
 		Title:       &req.Title,
 		Description: req.Description,
 	}
 
-	chatID, err := s.repo.CreateChat(ctx, ownerID, &chat)
+	chatID, err := s.repo.CreateGroup(ctx, ownerID, &chat)
 	if err != nil {
-		return "", fmt.Errorf("s.repo.CreateChat: %w", err)
+		return "", fmt.Errorf("s.repo.CreateGroup: %w", err)
 	}
 
 	return chatID, nil
+}
+
+func (s *ChatService) CreateDirect(ctx context.Context, userID, targetID string) (string, error) {
+	blocked, err := s.repo.CheckBlock(ctx, userID, targetID)
+	if err != nil {
+		return "", fmt.Errorf("s.repo.CheckBlock: %w", err)
+	}
+	if blocked {
+		return "", domain.ErrForbidden
+	}
+	chatID, err := s.repo.CreateDirect(ctx, userID, targetID)
+	if err != nil {
+		return "", fmt.Errorf("s.repo.CreateDirect: %w", err)
+	}
+
+	return chatID, nil
+}
+
+func (s *ChatService) GetChatList(ctx context.Context, userID string) ([]models.FeedDirects, error) {
+	fd, err := s.repo.GetChatList(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.GetChatList: %w", err)
+	}
+	return fd, nil
+}
+
+func (s *ChatService) MarkAsRead(ctx context.Context, chatID, userID string) error {
+	if err := s.repo.MarkAsRead(ctx, chatID, userID); err != nil {
+		return fmt.Errorf("s.repo.MarkAsRead: %w", err)
+	}
+	return nil
 }
 
 func (s *ChatService) GetChatByID(ctx context.Context, chatID string) (*models.Chat, error) {

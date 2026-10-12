@@ -12,27 +12,48 @@ import (
 
 	mongorepo "github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/mongo"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/store"
 )
 
 type MessageService struct {
 	repo  *postgres.MessagesRepo
 	mrepo *mongorepo.MessagerRepo
-	store *store.StreamStore
 }
 
-func NewMessageService(repo *postgres.MessagesRepo, mrepo *mongorepo.MessagerRepo, store *store.StreamStore) *MessageService {
-	return &MessageService{repo: repo, mrepo: mrepo, store: store}
+func NewMessageService(repo *postgres.MessagesRepo, mrepo *mongorepo.MessagerRepo) *MessageService {
+	return &MessageService{repo: repo, mrepo: mrepo}
 }
 
-func (s *MessageService) SaveMessage(ctx context.Context, userID, chatID string, req *dto.MessageDTO) (*bson.ObjectID, error) {
+func (s *MessageService) SaveDirectMessage(ctx context.Context, userID, targetID string, req *dto.MessageDTO) (*bson.ObjectID, error) {
+	msg := models.Message{
+		ChatID:    targetID,
+		UserID:    userID,
+		Text:      req.Text,
+		CreatedAt: time.Now(),
+	}
+	blocked, err := s.repo.CheckBlock(ctx, userID, targetID)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.CheckBlock: %w", err)
+	}
+	if blocked {
+		return nil, domain.ErrForbidden
+	}
+
+	objID, err := s.mrepo.SaveMessage(ctx, &msg)
+	if err != nil {
+		return nil, fmt.Errorf("s.mrepo.SaveMessage: %w", err)
+	}
+
+	return objID, nil
+}
+
+func (s *MessageService) SaveGroupMessage(ctx context.Context, userID, chatID string, req *dto.MessageDTO) (*bson.ObjectID, error) {
 	msg := models.Message{
 		ChatID:    chatID,
 		UserID:    userID,
 		Text:      req.Text,
 		CreatedAt: time.Now(),
 	}
-	blocked, err := s.repo.CheckBlock(ctx, userID, chatID)
+	blocked, err := s.repo.CheckBanUser(ctx, userID, chatID)
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.CheckBlock: %w", err)
 	}
@@ -57,26 +78,10 @@ func (s *MessageService) GetMessages(ctx context.Context, chatID string) ([]mode
 	return msgs, nil
 }
 
-func (s *MessageService) GetStreamHistory(ctx context.Context, streamID string) ([]models.Message, error) {
-	msgs, err := s.store.GetStreamMessages(ctx, streamID)
+func (s *MessageService) GetUsersFromChat(ctx context.Context, chatID string) ([]models.FeedChatMember, error) {
+	resp, err := s.repo.GetUsersFromChat(ctx, chatID)
 	if err != nil {
-		return nil, fmt.Errorf("s.store.GetStreamMessages: %w", err)
+		return nil, fmt.Errorf("s.repo.GetUsersFromChat: %w", err)
 	}
-
-	return msgs, nil
-}
-
-func (s *MessageService) SaveStreamMessage(ctx context.Context, userID, streamID string, req *dto.MessageDTO) error {
-	msg := models.Message{
-		ChatID:    streamID,
-		UserID:    userID,
-		Text:      req.Text,
-		CreatedAt: time.Now(),
-	}
-
-	if err := s.store.SaveStreamMessage(ctx, streamID, &msg); err != nil {
-		return fmt.Errorf("s.store.GetStreamMessages: %w", err)
-	}
-
-	return nil
+	return resp, nil
 }

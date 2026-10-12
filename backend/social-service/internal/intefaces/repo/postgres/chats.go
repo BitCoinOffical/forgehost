@@ -20,7 +20,7 @@ func NewChatsRepo(pool *pgxpool.Pool) *ChatsRepo {
 	return &ChatsRepo{pool: pool}
 }
 
-func (r *ChatsRepo) CreateChat(ctx context.Context, ownerID string, chat *models.Chat) (string, error) {
+func (r *ChatsRepo) CreateGroup(ctx context.Context, ownerID string, chat *models.Chat) (string, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return "", fmt.Errorf("r.pool.Begin: %w", err)
@@ -42,6 +42,26 @@ func (r *ChatsRepo) CreateChat(ctx context.Context, ownerID string, chat *models
 
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("tx.Commit: %w", err)
+	}
+
+	return chatID, nil
+}
+
+func (r *ChatsRepo) CreateDirect(ctx context.Context, userID, targetID string) (string, error) {
+	userA, userB := userID, targetID
+	if userA > userB {
+		userA, userB = userB, userA
+	}
+
+	var chatID string
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO directs (user_a_id, user_b_id)
+		VALUES ($1, $2)
+		ON CONFLICT (user_a_id, user_b_id) DO UPDATE SET user_a_id = EXCLUDED.user_a_id
+		RETURNING id
+	`, userA, userB).Scan(&chatID)
+	if err != nil {
+		return "", fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
 
 	return chatID, nil
@@ -79,10 +99,33 @@ func (r *ChatsRepo) DeleteChat(ctx context.Context, chatID, ownerID string) erro
 }
 
 func (r *ChatsRepo) LeaveChat(ctx context.Context, chatID, userID string) error {
-	sql := `DELETE FROM chat_members WHERE chat_id = $1 AND user_id = $2`
-	tag, err := r.pool.Exec(ctx, sql, chatID, userID)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("r.pool.Exec: %w", err)
+		return fmt.Errorf("r.pool.Begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	var role string
+	err = tx.QueryRow(ctx, `
+	SELECT role 
+	FROM chat_members 
+	WHERE chat_id = $1 AND user_id = $2 
+	FOR SHARE`, chatID, userID).Scan(&role)
+	if err != nil {
+		return fmt.Errorf("tx.QueryRow: %w", err)
+	}
+
+	if role == "owner" {
+		_, err := tx.Exec(ctx, `DELETE FROM chats WHERE id = $1`, chatID)
+		if err != nil {
+			return fmt.Errorf("tx.Exec: %w", err)
+		}
+		return nil
+	}
+
+	sql := `DELETE FROM chat_members WHERE chat_id = $1 AND user_id = $2`
+	tag, err := tx.Exec(ctx, sql, chatID, userID)
+	if err != nil {
+		return fmt.Errorf("tx.Exec: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.ErrNotFound
@@ -170,7 +213,7 @@ func (r *ChatsRepo) SetUserRoleChat(ctx context.Context, ownerID string, members
 	}
 
 	var resp models.ChatMember
-	if err := tx.QueryRow(ctx, `UPDATE chat_member 
+	if err := tx.QueryRow(ctx, `UPDATE chat_members
 	SET role = $1 
 	WHERE chat_id = $2 AND user_id = $3 
 	RETURNING chat_id, user_id, role, joined_at`, members.Role, members.ChatID, members.UserID).Scan(
@@ -300,7 +343,7 @@ func (r *ChatsRepo) BanUser(ctx context.Context, chatID, targetID, userID string
 		return domain.ErrCannotKickOwner
 	}
 
-	_, err = r.pool.Exec(ctx, `INSERT INTO chat_bans (chat_id, user_id, banned_by) VALUES ($1, $2, $3)`, chatID, targetID, userID)
+	_, err = tx.Exec(ctx, `INSERT INTO chat_bans (chat_id, user_id, banned_by) VALUES ($1, $2, $3)`, chatID, targetID, userID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
@@ -355,4 +398,73 @@ func (r *ChatsRepo) CheckBanUser(ctx context.Context, chatID, targetID string) (
 		return false, fmt.Errorf("r.db.QueryRow: %w", err)
 	}
 	return banned, nil
+}
+func (r *ChatsRepo) CheckBlock(ctx context.Context, userID, targetID string) (bool, error) {
+	sql := `SELECT EXISTS (
+	SELECT 1 FROM blocks 
+	WHERE (user_id = $1 AND target_id = $2) 
+	OR (user_id = $2 AND target_id = $1) 
+	)`
+
+	var blocked bool
+
+	err := r.pool.QueryRow(ctx, sql, userID, targetID).Scan(&blocked)
+	if err != nil {
+		return false, fmt.Errorf("r.pool.QueryRow: %w", err)
+	}
+
+	return blocked, nil
+}
+func (r *ChatsRepo) GetChatList(ctx context.Context, userID string) ([]models.FeedDirects, error) {
+	sql := `SELECT 
+	d.id, 
+	p.username,
+	p.avatar_url,
+	p.user_id 
+	FROM directs d 
+	JOIN profiles p ON p.user_id = CASE WHEN d.user_a_id = $1 THEN d.user_b_id ELSE d.user_a_id END
+	WHERE (d.user_a_id = $1) OR (d.user_b_id = $1) ORDER BY d.updated_at DESC
+	`
+	var chats []models.FeedDirects
+	rows, err := r.pool.Query(ctx, sql, userID)
+	if err != nil {
+		return nil, fmt.Errorf("r.pool.Query: %w", err)
+	}
+
+	for rows.Next() {
+		var chat models.FeedDirects
+		if err := rows.Scan(
+			&chat.ID,
+			&chat.Username,
+			&chat.AvatarURL,
+			&chat.UserID,
+		); err != nil {
+			return nil, fmt.Errorf("rows.Scan: %w", err)
+		}
+		chats = append(chats, chat)
+	}
+
+	return chats, nil
+}
+
+func (r *ChatsRepo) TouchChat(ctx context.Context, chatID string) error {
+	_, err := r.pool.Exec(ctx, `
+		UPDATE directs SET updated_at = NOW() WHERE id = $1
+	`, chatID)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
+}
+
+func (r *ChatsRepo) MarkAsRead(ctx context.Context, chatID, userID string) error {
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO chat_reads (chat_id, user_id, last_read_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (chat_id, user_id) DO UPDATE SET last_read_at = NOW()
+	`, chatID, userID)
+	if err != nil {
+		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	return nil
 }

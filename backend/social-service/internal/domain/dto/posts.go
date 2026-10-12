@@ -18,10 +18,9 @@ type CreatePostDTO struct {
 }
 
 type UpdatePostDTO struct {
-	PostID      string `json:"id"`
-	TopicID     *int   `json:"topic_id"`
-	ImageUrl    string `json:"image_url"`
-	Description string `json:"description"`
+	TopicID     *int    `json:"topic_id"`
+	ImageUrl    *string `json:"image_url"`
+	Description *string `json:"description"`
 }
 
 type CreateTopicDTO struct {

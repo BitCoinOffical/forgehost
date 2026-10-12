@@ -7,10 +7,12 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/store"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
 type ProfileService interface {
@@ -37,9 +39,9 @@ type CommentsService interface {
 
 type PostsService interface {
 	GetSubPosts(ctx context.Context, id string) ([]models.FeedPost, error)
-	GetGlobalPosts(ctx context.Context, id, cursor string) ([]models.FeedPost, error)
+	GetGlobalPosts(ctx context.Context, cursor string) ([]models.FeedPost, error)
 	CreatePost(ctx context.Context, req *dto.CreatePostDTO, id string) error
-	UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, id string) (*models.Post, error)
+	UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, postID, userID string) (*models.Post, error)
 	GetPostByID(ctx context.Context, postId string) (*models.FeedPost, error)
 	ViewPost(ctx context.Context, id string) error
 	ReportPost(ctx context.Context, req *dto.ReportDTO, userId, postId string) error
@@ -60,6 +62,7 @@ type Services struct {
 	post    PostsService
 	coms    CommentsService
 	chat    *services.ChatService
+	strm    *services.StreamService
 }
 
 func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
@@ -76,7 +79,11 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
 	chatrepo := postgres.NewChatsRepo(pool)
 	chat := services.NewChatService(chatrepo)
 
-	return &Services{profile: profile, post: post, coms: coms, chat: chat}
+	store := store.NewStreamStore(rdb)
+	stramrepo := postgres.NewStreamRepo(pool)
+	strm := services.NewStreamService(store, stramrepo)
+
+	return &Services{profile: profile, post: post, coms: coms, chat: chat, strm: strm}
 }
 
 type Handlers struct {
@@ -84,12 +91,14 @@ type Handlers struct {
 	Posts    *PostHandler
 	Comments *CommentHandler
 	Chats    *ChatHandler
+	Stream   *StreamHandler
 }
 
-func NewHandlers(srvc *Services, logger *zap.Logger) *Handlers {
+func NewHandlers(srvc *Services, logger *zap.Logger, cfg *oauth2.Config) *Handlers {
 	comments := NewCommentHandler(srvc.coms, logger)
 	profile := NewProfileHandler(srvc.profile, logger)
 	posts := NewPostHandler(srvc.post, logger)
 	chat := NewChatHandler(srvc.chat, logger)
-	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat}
+	stream := NewStreamHandler(logger, cfg, srvc.strm)
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat, Stream: stream}
 }
