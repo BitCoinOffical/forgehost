@@ -18,6 +18,15 @@ type Chat struct {
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
+type FeedDirects struct {
+	ID        string `db:"id"`
+	Username  string `db:"username"`
+	AvatarURL string `db:"avatar_url"`
+	UserID    string `db:"user_id"`
+
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
 
 type ChatMember struct {
 	ChatID   string     `db:"chat_id"`
