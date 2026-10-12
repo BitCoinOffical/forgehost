@@ -12,25 +12,31 @@ import (
 )
 
 type WebSockerServices struct {
-	hub  *Hub
-	srvc *services.MessageService
+	hub   *Hub
+	msgs  *services.MessageService
+	strms *services.StreamService
 }
 
-func NewWebSockerServices(coll *mongo.Collection, rdb *redis.Client, pool *pgxpool.Pool) *WebSockerServices {
-	hub := NewHub()
+func NewWebSockerServices(coll *mongo.Collection, rdb *redis.Client, pool *pgxpool.Pool, logger *zap.Logger) *WebSockerServices {
+	hub := NewHub(logger)
 	store := store.NewStreamStore(rdb)
-	repo := postgres.NewMessagersRepo(pool)
-	mrepo := mongorepo.NewMessagerRepo(coll)
-	srvc := services.NewMessageService(repo, mrepo, store)
+	msgRepo := postgres.NewMessagersRepo(pool)
+	msgMrepo := mongorepo.NewMessagerRepo(coll)
+	msgs := services.NewMessageService(msgRepo, msgMrepo)
 
-	return &WebSockerServices{hub: hub, srvc: srvc}
+	strmRepo := postgres.NewStreamRepo(pool)
+	strms := services.NewStreamService(store, strmRepo)
+
+	return &WebSockerServices{hub: hub, msgs: msgs, strms: strms}
 }
 
 type WebSockerHandlers struct {
-	Msgs *MessagerHandler
+	Msgs  *MessagerHandler
+	Strms *StreamHandler
 }
 
 func NewWebSockerHandlers(srvc *WebSockerServices, logger *zap.Logger) *WebSockerHandlers {
-	msgs := NewMessageHandler(srvc.hub, srvc.srvc, logger)
-	return &WebSockerHandlers{Msgs: msgs}
+	msgs := NewMessageHandler(srvc.hub, srvc.msgs, logger)
+	strms := NewStreamHandler(srvc.hub, srvc.strms, logger)
+	return &WebSockerHandlers{Msgs: msgs, Strms: strms}
 }
