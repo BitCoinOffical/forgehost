@@ -1,14 +1,16 @@
 package ws
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/coder/websocket"
-	"github.com/coder/websocket/wsjson"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -23,8 +25,7 @@ func NewMessageHandler(hub *Hub, srvc *services.MessageService, logger *zap.Logg
 	return &MessagerHandler{hub: hub, logger: logger, srvc: srvc}
 }
 
-func (h *MessagerHandler) SendMessage(c *gin.Context) {
-	chatID := c.Param("chat_id")
+func (h *MessagerHandler) Connect(c *gin.Context) {
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
@@ -33,42 +34,139 @@ func (h *MessagerHandler) SendMessage(c *gin.Context) {
 
 	conn, err := websocket.Accept(c.Writer, c.Request, nil)
 	if err != nil {
-		response.InternalServerError(c, err, "failed accept websocket", h.logger)
+		h.logger.Error("failed accept websocket", zap.Error(err))
 		return
 	}
-
+	ctx := conn.CloseRead(c.Request.Context())
 	defer func() {
 		if err := conn.CloseNow(); err != nil {
-			h.logger.Error("conn.CloseNow error", zap.Error(err))
+			h.logger.Debug("conn.CloseNow error", zap.Error(err))
 		}
 	}()
 
 	h.hub.Register(userID, conn)
-	defer h.hub.Unregister(userID)
+	defer h.hub.Unregister(userID, conn)
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
 	for {
-		var msg dto.MessageDTO
-		if err := wsjson.Read(c.Request.Context(), conn, &msg); err != nil {
-			h.logger.Error("user disconnected", zap.Error(err))
+		select {
+		case <-ctx.Done():
+			h.logger.Info("close with context")
 			return
+		case <-ticker.C:
+			pctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			err := conn.Ping(pctx)
+			cancel()
+			if err != nil {
+				h.logger.Error("ping error", zap.Error(err))
+				return
+			}
 		}
-
-		if err := h.hub.SendTo(c.Request.Context(), chatID, map[string]any{
-			"from": userID,
-			"text": msg.Text,
-		}); err != nil {
-			h.logger.Error("send to", zap.String("chat_id", chatID), zap.Error(err))
-			continue
-		}
-
-		objID, err := h.srvc.SaveMessage(c.Request.Context(), userID, chatID, &msg)
-		if err != nil {
-			response.InternalServerError(c, err, "failed save message", h.logger)
-			continue
-		}
-
-		c.JSON(http.StatusOK, objID)
 	}
+}
+
+func (h *MessagerHandler) SendMessageGroup(c *gin.Context) {
+	chatID := c.Param("chat_id")
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	var msg dto.MessageDTO
+	if err := c.ShouldBindBodyWithJSON(&msg); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	members, err := h.srvc.GetUsersFromChat(c.Request.Context(), chatID)
+	if err != nil {
+		response.InternalServerError(c, err, "failed get members", h.logger)
+		return
+	}
+
+	recipients := make([]string, 0, len(members))
+	isMember := false
+	for _, m := range members {
+		recipients = append(recipients, m.UserID)
+		if m.UserID == userID {
+			isMember = true
+		}
+	}
+	if !isMember {
+		response.Forbidden(c, domain.ErrForbidden, "not a chat member", h.logger)
+		return
+	}
+
+	objID, err := h.srvc.SaveGroupMessage(c.Request.Context(), userID, chatID, &msg)
+	if err != nil {
+		response.InternalServerError(c, err, "failed save message", h.logger)
+		return
+	}
+
+	payload := map[string]any{
+		"id":      objID,
+		"chat_id": chatID,
+		"from":    userID,
+		"text":    msg.Text,
+	}
+
+	h.hub.Broadcast(c.Request.Context(), recipients, payload)
+
+	c.JSON(http.StatusOK, objID)
+}
+
+func (h *MessagerHandler) SendMessageDirect(c *gin.Context) {
+	chatID := c.Param("chat_id")
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	var msg dto.MessageDTO
+	if err := c.ShouldBindBodyWithJSON(&msg); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	members, err := h.srvc.GetUsersFromChat(c.Request.Context(), chatID)
+	if err != nil {
+		response.InternalServerError(c, err, "failed get members", h.logger)
+		return
+	}
+
+	recipients := make([]string, 0, len(members))
+	isMember := false
+	for _, m := range members {
+		recipients = append(recipients, m.UserID)
+		if m.UserID == userID {
+			isMember = true
+		}
+	}
+	if !isMember {
+		response.Forbidden(c, domain.ErrForbidden, "not a chat member", h.logger)
+		return
+	}
+
+	objID, err := h.srvc.SaveDirectMessage(c.Request.Context(), userID, chatID, &msg)
+	if err != nil {
+		response.InternalServerError(c, err, "failed save message", h.logger)
+		return
+	}
+
+	payload := map[string]any{
+		"id":      objID,
+		"chat_id": chatID,
+		"from":    userID,
+		"text":    msg.Text,
+	}
+
+	h.hub.Broadcast(c.Request.Context(), recipients, payload)
+
+	c.JSON(http.StatusOK, objID)
 }
 
 func (h *MessagerHandler) GetChatHistory(c *gin.Context) {
@@ -77,41 +175,6 @@ func (h *MessagerHandler) GetChatHistory(c *gin.Context) {
 	msgs, err := h.srvc.GetMessages(c.Request.Context(), chatID)
 	if err != nil {
 		response.InternalServerError(c, err, "failed get history chat", h.logger)
-		return
-	}
-
-	c.JSON(http.StatusOK, msgs)
-}
-
-func (h *MessagerHandler) SaveStreamMessage(c *gin.Context) {
-	streamId := c.Param("stream_id")
-
-	id, err := middleware.GetUserID(c)
-	if err != nil {
-		response.Unauthorized(c, err, "failed get user id", h.logger)
-		return
-	}
-
-	var req dto.MessageDTO
-	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		response.BadRequest(c, err, "invalid request body", h.logger)
-		return
-	}
-
-	if err := h.srvc.SaveStreamMessage(c.Request.Context(), id, streamId, &req); err != nil {
-		response.InternalServerError(c, err, "failed save stream message", h.logger)
-		return
-	}
-
-	c.Status(http.StatusCreated)
-}
-
-func (h *MessagerHandler) GetStreamHistory(c *gin.Context) {
-	streamId := c.Param("stream_id")
-
-	msgs, err := h.srvc.GetStreamHistory(c.Request.Context(), streamId)
-	if err != nil {
-		response.InternalServerError(c, err, "invalid get strwam history", h.logger)
 		return
 	}
 
