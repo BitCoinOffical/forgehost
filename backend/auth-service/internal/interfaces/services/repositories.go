@@ -9,7 +9,7 @@ import (
 )
 
 type AuthRepository interface {
-	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	SaveUser(ctx context.Context, req *models.User) (uuid.UUID, error)
 	SaveGoogleUser(ctx context.Context, req *models.User, oathReq *models.OAuthAccount) (uuid.UUID, error)
