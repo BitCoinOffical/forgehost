@@ -97,7 +97,7 @@ func (s *GoogleAuthService) GoogleCallback(ctx context.Context, req *dto.GoogleU
 
 // android
 func (s *GoogleAuthService) GoogleLoginAndroid(ctx context.Context, req dto.GoogleAndroidUserDTO) (*models.Tokens, error) {
-	payload, err := idtoken.Validate(ctx, req.IdToken, s.WebgoogleClientID) //android
+	payload, err := idtoken.Validate(ctx, req.IDToken, s.WebgoogleClientID) //android
 	if err != nil {
 		return nil, fmt.Errorf("idtoken.Validate: %w error: %v", domain.ErrInvalidGoogleToken, err)
 	}
