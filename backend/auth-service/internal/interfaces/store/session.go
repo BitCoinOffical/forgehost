@@ -24,16 +24,16 @@ func NewSessionStore(rdb *redis.Client) *SessionStore {
 	return &SessionStore{rdb: rdb}
 }
 
-func (s *SessionStore) SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error {
-	key := tokenKey + id.String()
+func (s *SessionStore) SaveToken(ctx context.Context, userID uuid.UUID, value string, RefreshTTL time.Duration) error {
+	key := tokenKey + userID.String()
 	if err := s.rdb.Set(ctx, key, value, RefreshTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
 	}
 	return nil
 }
 
-func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
-	key := tokenKey + id.String()
+func (s *SessionStore) GetToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	key := tokenKey + userID.String()
 	value, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -44,8 +44,8 @@ func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, erro
 	return value, nil
 }
 
-func (s *SessionStore) DeleteToken(ctx context.Context, id uuid.UUID) error {
-	key := tokenKey + id.String()
+func (s *SessionStore) DeleteToken(ctx context.Context, userID uuid.UUID) error {
+	key := tokenKey + userID.String()
 	if err := s.rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Del: %w", err)
 	}
