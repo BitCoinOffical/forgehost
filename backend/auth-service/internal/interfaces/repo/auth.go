@@ -26,11 +26,11 @@ func NewAuthRepo(pool *pgxpool.Pool) *AuthRepo {
 	return &AuthRepo{pool: pool}
 }
 
-func (r *AuthRepo) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+func (r *AuthRepo) GetUserByID(ctx context.Context, userID uuid.UUID) (*models.User, error) {
 	var user models.User
 
 	sql := `SELECT email, password_hash, email_verified, email_banned FROM users WHERE id = $1`
-	err := r.pool.QueryRow(ctx, sql, id).Scan(&user.Email, &user.PasswordHash, &user.EmailVerified, &user.EmailBanned)
+	err := r.pool.QueryRow(ctx, sql, userID).Scan(&user.Email, &user.PasswordHash, &user.EmailVerified, &user.EmailBanned)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("user not found: %w", domain.ErrNotFound)
@@ -60,9 +60,9 @@ func (r *AuthRepo) GetUserByEmail(ctx context.Context, email string) (*models.Us
 func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, error) {
 	sql := `INSERT INTO users (email, password_hash, email_verified) VALUES ($1, $2, true) RETURNING id`
 
-	var id uuid.UUID
+	var userID uuid.UUID
 
-	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&id); err != nil {
+	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&userID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return uuid.Nil, fmt.Errorf("email alredy exists: %w", domain.ErrEmailAlreadyExists)
@@ -70,7 +70,7 @@ func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, e
 		return uuid.Nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
 
-	return id, nil
+	return userID, nil
 }
 
 func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq *models.OAuthAccount) (uuid.UUID, error) {
@@ -95,7 +95,7 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 
 	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email=$1`, req.Email).Scan(&userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture, email_verified) VALUES ($1, $2, $3, $4) RETURNING id`, req.Name, req.Email, req.Picture, req.EmailVerified).Scan(&userID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture_url, email_verified) VALUES ($1, $2, $3, $4) RETURNING id`, req.Name, req.Email, req.Picture, req.EmailVerified).Scan(&userID); err != nil {
 			return uuid.Nil, fmt.Errorf("tx.QueryRow: %w", err)
 		}
 	} else if err != nil {
