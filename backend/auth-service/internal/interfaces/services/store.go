@@ -23,9 +23,9 @@ type ResendStore interface {
 	ResendLimitCheck(ctx context.Context, email string) (string, error)
 }
 type SessionStore interface {
-	SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error
-	GetToken(ctx context.Context, id uuid.UUID) (string, error)
-	DeleteToken(ctx context.Context, id uuid.UUID) error
+	SaveToken(ctx context.Context, userID uuid.UUID, value string, RefreshTTL time.Duration) error
+	GetToken(ctx context.Context, userID uuid.UUID) (string, error)
+	DeleteToken(ctx context.Context, userID uuid.UUID) error
 }
 
 type UserStore interface {
