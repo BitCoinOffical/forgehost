@@ -50,7 +50,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 
 	key, err := h.srvc.RegisterUser(c.Request.Context(), &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailAlreadyExists) {
+		if errors.Is(err, domain.ErrAlreadyExists) {
 			response.Conflict(c, err, "email already exists", h.logger)
 			return
 		}
@@ -83,7 +83,7 @@ func (h *RegisterHandler) VerifyEmail(c *gin.Context) {
 
 	tokens, err := h.srvc.VerifyEmail(c.Request.Context(), &req)
 	if err != nil {
-		if errors.Is(err, domain.ErrEmailAlreadyExists) {
+		if errors.Is(err, domain.ErrAlreadyExists) {
 			response.Conflict(c, err, "email already exists", h.logger)
 			return
 		}
