@@ -60,13 +60,13 @@ func (s *GoogleAuthService) GoogleCallback(ctx context.Context, req *dto.GoogleU
 		FamilyName:     req.FamilyName,
 	}
 
-	id, err := s.repo.SaveGoogleUser(ctx, user, oauth)
+	userID, err := s.repo.SaveGoogleUser(ctx, user, oauth)
 	if err != nil {
 		return "", fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
 	}
 
 	event := dto.UserRegisteredEvent{
-		UserID: id.String(),
+		UserID: userID.String(),
 	}
 
 	data, err := v2.Marshal(&event)
@@ -82,15 +82,15 @@ func (s *GoogleAuthService) GoogleCallback(ctx context.Context, req *dto.GoogleU
 	if err := result.FirstErr(); err != nil {
 		return "", fmt.Errorf("s.client.ProduceSync: %w", err)
 	}
-	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", id.String()))
+	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", userID.String()))
 
 	oauthCode := uuid.New()
 
-	if err := s.codeStore.SaveOauthCode(ctx, oauthCode.String(), id.String()); err != nil {
+	if err := s.codeStore.SaveOauthCode(ctx, oauthCode.String(), userID.String()); err != nil {
 		return "", fmt.Errorf("s.codeStore.SaveOauthCode: %w", err)
 	}
 
-	s.logger.Debug("successful google callback", zap.String("user_id", id.String()), zap.String("source", "google"), zap.String("client", "web"))
+	s.logger.Debug("successful google callback", zap.String("user_id", userID.String()), zap.String("source", "google"), zap.String("client", "web"))
 
 	return oauthCode.String(), nil
 }
@@ -134,16 +134,16 @@ func (s *GoogleAuthService) GoogleLoginAndroid(ctx context.Context, req dto.Goog
 		return nil, fmt.Errorf("s.repo.SaveGoogleUser: %w", err)
 	}
 
-	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, accessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
-	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, refreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, refreshTTL); err != nil {
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
@@ -174,17 +174,17 @@ func (s *GoogleAuthService) Exchange(ctx context.Context, req *dto.ExchangeReque
 		return nil, fmt.Errorf("s.repo.GetUserByID: %w", err)
 	}
 
-	accessToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, accessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
-	refreshToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(parseId, role, user.EmailVerified, user.EmailBanned, refreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.sessionStore.SaveToken(ctx, parseId, refreshToken, RefreshTTL); err != nil {
+	if err := s.sessionStore.SaveToken(ctx, parseId, refreshToken, refreshTTL); err != nil {
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
