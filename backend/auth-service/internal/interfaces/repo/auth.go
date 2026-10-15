@@ -65,7 +65,7 @@ func (r *AuthRepo) SaveUser(ctx context.Context, req *models.User) (uuid.UUID, e
 	if err := r.pool.QueryRow(ctx, sql, req.Email, req.PasswordHash).Scan(&userID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
-			return uuid.Nil, fmt.Errorf("email alredy exists: %w", domain.ErrEmailAlreadyExists)
+			return uuid.Nil, fmt.Errorf("email already exists: %w", domain.ErrAlreadyExists)
 		}
 		return uuid.Nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
@@ -95,18 +95,22 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 
 	err = tx.QueryRow(ctx, `SELECT id FROM users WHERE email=$1`, req.Email).Scan(&userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture_url, email_verified) VALUES ($1, $2, $3, $4) RETURNING id`, req.Name, req.Email, req.Picture, req.EmailVerified).Scan(&userID); err != nil {
+		if err := tx.QueryRow(ctx, `INSERT INTO users (name, email, picture_url, email_verified) 
+		VALUES ($1, $2, $3, $4) 
+		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+		RETURNING id`, req.Name, req.Email, req.Picture, req.EmailVerified).Scan(&userID); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+				return uuid.Nil, fmt.Errorf("users already exists: %w", domain.ErrAlreadyExists)
+			}
 			return uuid.Nil, fmt.Errorf("tx.QueryRow: %w", err)
 		}
 	} else if err != nil {
 		return uuid.Nil, fmt.Errorf("check user by email: %w", err)
 	} else {
-		tag, err := tx.Exec(ctx, `UPDATE users SET email_verified=true WHERE id=$1 AND email_verified=false`, userID)
+		_, err := tx.Exec(ctx, `UPDATE users SET email_verified=true WHERE id=$1 AND email_verified=false`, userID)
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("update email_verified: %w", err)
-		}
-		if tag.RowsAffected() == 0 {
-			return uuid.Nil, domain.ErrNotFound
 		}
 	}
 
@@ -116,8 +120,8 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 		VALUES ($1, $2, $3, $4, $5)
 		`, userID, oathReq.Provider, oathReq.ProviderUserID, oathReq.GivenName, oathReq.FamilyName); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return uuid.Nil, fmt.Errorf("oauth account already linked: %w", domain.ErrEmailAlreadyExists)
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return uuid.Nil, fmt.Errorf("oauth account already linked: %w", domain.ErrAlreadyExists)
 		}
 		return uuid.Nil, fmt.Errorf("tx.Exec: %w", err)
 	}
@@ -138,4 +142,17 @@ func (r *AuthRepo) UpdateUserPassword(ctx context.Context, user *models.User) er
 		return domain.ErrNotFound
 	}
 	return nil
+}
+
+func (r *AuthRepo) CheckExistsUserByEmail(ctx context.Context, email string) (bool, error) {
+	sql := `SELECT EXISTS  (
+	SELECT 1 FROM users WHERE email = $1
+	)`
+	var exists bool
+	err := r.pool.QueryRow(ctx, sql, email).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("r.pool.Exec: %w", err)
+	}
+
+	return exists, nil
 }
