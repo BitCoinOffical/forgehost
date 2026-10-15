@@ -68,12 +68,12 @@ func (s *RegisterService) RegisterUser(ctx context.Context, req *dto.UsersRegist
 		return nil, fmt.Errorf("s.resendStore.SaveVerificationCode: %w", err)
 	}
 
-	_, err = s.repo.GetUserByEmail(ctx, req.Email)
-	if err == nil || !errors.Is(err, domain.ErrNotFound) {
-		if err == nil {
-			return nil, fmt.Errorf("s.repo.GetUserByEmail: %w", domain.ErrEmailAlreadyExists)
-		}
-		return nil, fmt.Errorf("s.repo.GetUserByEmail: %w", err)
+	exists, err := s.repo.CheckExistsUserByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.CheckExistsUserByEmail: %w", err)
+	}
+	if exists {
+		return nil, fmt.Errorf("user already exists: %w", domain.ErrAlreadyExists)
 	}
 
 	hashpass, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -104,7 +104,7 @@ func (s *RegisterService) RegisterUser(ctx context.Context, req *dto.UsersRegist
 		return nil, fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
 
-	if err := s.codeStore.SaveVerificationCode(ctx, randStr, code, VerificationTTL); err != nil {
+	if err := s.codeStore.SaveVerificationCode(ctx, randStr, code, verificationTTL); err != nil {
 		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -114,7 +114,7 @@ func (s *RegisterService) RegisterUser(ctx context.Context, req *dto.UsersRegist
 		Email: verify.Email,
 
 		TitleSubject: codeSubject,
-		DispatchDate: time.Now().Add(VerificationTTL),
+		DispatchDate: time.Now().Add(verificationTTL),
 	}
 
 	b, err := json.Marshal(&body)
@@ -189,16 +189,16 @@ func (s *RegisterService) VerifyEmail(ctx context.Context, req *dto.VerifyEmailD
 
 	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", id.String()))
 
-	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, accessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
-	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(id, role, user.EmailVerified, user.EmailBanned, refreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, RefreshTTL); err != nil {
+	if err := s.sessionStore.SaveToken(ctx, id, refreshToken, refreshTTL); err != nil {
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
@@ -231,7 +231,7 @@ func (s *RegisterService) ResendVerifyEmail(ctx context.Context, req *dto.Verify
 		return fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
 
-	if err := s.codeStore.SaveVerificationCode(ctx, verify.PendingKey, code, VerificationTTL); err != nil {
+	if err := s.codeStore.SaveVerificationCode(ctx, verify.PendingKey, code, verificationTTL); err != nil {
 		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -241,7 +241,7 @@ func (s *RegisterService) ResendVerifyEmail(ctx context.Context, req *dto.Verify
 		Email: verify.Email,
 
 		TitleSubject: codeSubject,
-		DispatchDate: time.Now().Add(VerificationTTL),
+		DispatchDate: time.Now().Add(verificationTTL),
 	}
 
 	b, err := json.Marshal(&body)
