@@ -34,12 +34,12 @@ func (s *RefreshService) UpdateAccessToken(ctx context.Context, refreshToken str
 		return nil, fmt.Errorf("s.tokens.ValidateToken: %w", err)
 	}
 
-	id, err := uuid.Parse(user.UserID)
+	parseID, err := uuid.Parse(user.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("uuid.Parse: %w", err)
 	}
 
-	savedToken, err := s.sessionStore.GetToken(ctx, id)
+	savedToken, err := s.sessionStore.GetToken(ctx, parseID)
 	if err != nil {
 		return nil, fmt.Errorf("s.sessionStore.GetToken: %w", err)
 	}
@@ -48,12 +48,12 @@ func (s *RefreshService) UpdateAccessToken(ctx context.Context, refreshToken str
 		return nil, domain.ErrInvalidCredentials
 	}
 
-	accessToken, err := s.tokens.GenerateToken(id, role, user.IsVerified, user.IsBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(parseID, role, user.IsVerified, user.IsBanned, accessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
-	s.logger.Debug("successful token access", zap.String("user_id", id.String()))
+	s.logger.Debug("successful token access", zap.String("user_id", parseID.String()))
 	return &models.Tokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
