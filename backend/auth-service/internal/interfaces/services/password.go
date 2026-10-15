@@ -99,7 +99,7 @@ func (s *PasswordService) PasswordReset(ctx context.Context, req *dto.PasswordRe
 	if err != nil {
 		return nil, fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
-	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, ResetPassTTL); err != nil {
+	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, resetPassTTL); err != nil {
 		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -109,7 +109,7 @@ func (s *PasswordService) PasswordReset(ctx context.Context, req *dto.PasswordRe
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		DispatchDate: time.Now().Add(ResetPassTTL),
+		DispatchDate: time.Now().Add(resetPassTTL),
 	}
 
 	body, err := json.Marshal(&queue)
@@ -178,7 +178,7 @@ func (s *PasswordService) PasswordResetResend(ctx context.Context, req *dto.Pass
 	if err != nil {
 		return fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
-	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, ResetPassTTL); err != nil {
+	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, resetPassTTL); err != nil {
 		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -188,7 +188,7 @@ func (s *PasswordService) PasswordResetResend(ctx context.Context, req *dto.Pass
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		DispatchDate: time.Now().Add(ResetPassTTL),
+		DispatchDate: time.Now().Add(resetPassTTL),
 	}
 
 	body, err := json.Marshal(&queue)
