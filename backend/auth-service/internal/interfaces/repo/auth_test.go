@@ -352,3 +352,52 @@ func TestUpdateUserPassword(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckExistsUserByEmail(t *testing.T) {
+	pool := setupTestDB(t)
+	defer cleanDB(t, pool)
+	repo := NewAuthRepo(pool)
+
+	testCases := []struct {
+		caseName   string
+		data       *models.User
+		f          func(ctx context.Context, req *models.User) (uuid.UUID, error)
+		wantExists bool
+	}{
+		{
+			caseName: "check user exists",
+			data: &models.User{
+				Email:        "user@gmail.com",
+				PasswordHash: []byte("new_password_hash"),
+			},
+			f:          repo.SaveUser,
+			wantExists: true,
+		},
+		{
+			caseName: "not found user",
+			data: &models.User{
+				Email:        "notfound@gmail.com",
+				PasswordHash: []byte("new_password_hash"),
+			},
+			wantExists: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.caseName, func(t *testing.T) {
+			if tc.f != nil {
+				_, err := tc.f(context.Background(), tc.data)
+				require.NoError(t, err)
+			}
+
+			exists, err := repo.CheckExistsUserByEmail(context.Background(), tc.data.Email)
+			if tc.wantExists {
+				require.NoError(t, err)
+				assert.True(t, exists)
+			} else {
+				require.NoError(t, err)
+				assert.False(t, exists)
+			}
+		})
+	}
+}
