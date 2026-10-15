@@ -71,17 +71,17 @@ func (s *LoginService) LoginUser(ctx context.Context, req *dto.UsersLoginDTO) (*
 	}
 	s.logger.Debug("write data in kafka", zap.String("topic", topic), zap.String("user_id", user.ID.String()))
 
-	accessToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, AccessTTL)
+	accessToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, accessTTL)
 	if err != nil {
 		return nil, fmt.Errorf("accessToken s.tokens.GenerateToken: %w", err)
 	}
 
-	refreshToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, RefreshTTL)
+	refreshToken, err := s.tokens.GenerateToken(user.ID, role, user.EmailVerified, user.EmailBanned, refreshTTL)
 	if err != nil {
 		return nil, fmt.Errorf("refreshToken s.tokens.GenerateToken: %w", err)
 	}
 
-	if err := s.sessionStore.SaveToken(ctx, user.ID, refreshToken, RefreshTTL); err != nil {
+	if err := s.sessionStore.SaveToken(ctx, user.ID, refreshToken, refreshTTL); err != nil {
 		return nil, fmt.Errorf("s.sessionStore.SaveToken: %w", err)
 	}
 
