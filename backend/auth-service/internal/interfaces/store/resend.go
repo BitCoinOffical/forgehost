@@ -34,12 +34,12 @@ func (s *ResendStore) ResendLimitAdd(ctx context.Context, email string) error {
 
 func (s *ResendStore) ResendLimitCheck(ctx context.Context, email string) (string, error) {
 	key := resendKey + email
-	res, err := s.rdb.Get(ctx, key).Result()
+	email, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
-		if errors.Is(err, redis.Nil) || res != "" {
+		if errors.Is(err, redis.Nil) || email != "" {
 			return "", fmt.Errorf("s.rdb.Set: %w", domain.ErrNotFound)
 		}
 		return "", fmt.Errorf("s.rdb.Set: %w", err)
 	}
-	return res, nil
+	return email, nil
 }
