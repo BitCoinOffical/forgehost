@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -41,13 +40,18 @@ func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.U
 
 func (s *UserStore) GetUser(ctx context.Context, randStr string) (*models.UserStored, error) {
 	key := pendingKey + randStr
-	var user models.UserStored
-	err := s.rdb.HGetAll(ctx, key).Scan(&user)
+	cmd := s.rdb.HGetAll(ctx, key)
+	res, err := cmd.Result()
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, fmt.Errorf("s.rdb.HGetAll: %w", domain.ErrNotFound)
-		}
 		return nil, fmt.Errorf("s.rdb.HGetAll: %w", err)
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("s.rdb.HGetAll: %w", domain.ErrNotFound)
+	}
+
+	var user models.UserStored
+	if err := cmd.Scan(&user); err != nil {
+		return nil, fmt.Errorf("cmd.Scan: %w", err)
 	}
 	return &user, nil
 }
