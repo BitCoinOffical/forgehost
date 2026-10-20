@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"net/url"
 	"sync"
@@ -130,20 +131,26 @@ func (rc *ResilientConnection) connect() (*amqp.Connection, error) {
 }
 
 func (rc *ResilientConnection) NewChannel() (*amqp.Channel, error) {
+	log.Println("start new channel")
 	timeout := time.After(30 * time.Second)
+	log.Println("start time out")
 	for {
 		rc.mu.RLock()
 		if rc.isReady && rc.conn != nil {
+			log.Println("1")
 			conn := rc.conn
 			rc.mu.RUnlock()
+			log.Println("2")
 			return conn.Channel()
 		}
 		rc.mu.RUnlock()
 
 		select {
 		case <-timeout:
+			log.Println("time out")
 			return nil, amqp.ErrClosed
 		case <-time.After(100 * time.Millisecond):
+			log.Println("retry", rc.isReady, rc.conn)
 			continue
 		}
 	}
