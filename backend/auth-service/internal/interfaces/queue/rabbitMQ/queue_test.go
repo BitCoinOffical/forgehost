@@ -9,21 +9,25 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	rabbittc "github.com/testcontainers/testcontainers-go/modules/rabbitmq"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+)
+
+const (
+	username = "test"
+	password = "test"
 )
 
 func setupTestRabbit(t *testing.T) *rabbitmq.ResilientConnection {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	container, err := rabbittc.Run(ctx, "rabbitmq:4.1-alpine",
+		rabbittc.WithAdminUsername(username),
+		rabbittc.WithAdminPassword(password),
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("Server startup complete"),
 		))
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		require.NoError(t, container.Terminate(ctx))
-	})
+	testcontainers.CleanupContainer(t, container)
 
 	host, err := container.Host(ctx)
 	if err != nil {
@@ -35,42 +39,40 @@ func setupTestRabbit(t *testing.T) *rabbitmq.ResilientConnection {
 	}
 
 	rc := rabbitmq.NewResilientConnection(&rabbitmq.RabbitURL{
-		User: "test",
-		Pass: "test",
+		User: username,
+		Pass: password,
 		Host: host,
 		Port: port.Port(),
-	}, zap.NewNop())
+	}, zaptest.NewLogger(t))
 
-	t.Cleanup(func() {
-		rc.Close()
-	})
+	t.Cleanup(rc.Close)
 
 	return rc
 }
 
-// func TestAddEmailTaskQueue(t *testing.T) {
-// 	rc := setupTestRabbit(t)
-// 	queue := NewQueue(rc)
-// 	testCases := []struct {
-// 		caseName string
-// 		body     []byte
-// 		succes   bool
-// 	}{
-// 		{
-// 			caseName: "add in task queue",
-// 			body:     []byte("task"),
-// 			succes:   true,
-// 		},
-// 	}
-// 	for _, tc := range testCases {
-// 		t.Run(tc.caseName, func(t *testing.T) {
-// 			err := queue.AddEmailTaskQueue(context.Background(), tc.body)
-// 			if tc.succes {
-// 				require.NoError(t, err)
-// 				return
-// 			}
-// 			require.Error(t, err)
-// 		})
-// 	}
+func TestAddEmailTaskQueue(t *testing.T) {
+	rc := setupTestRabbit(t)
+	queue := NewQueue(rc)
+	testCases := []struct {
+		caseName string
+		body     []byte
+		succes   bool
+	}{
+		{
+			caseName: "add in task queue",
+			body:     []byte("task"),
+			succes:   true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.caseName, func(t *testing.T) {
+			err := queue.AddEmailTaskQueue(context.Background(), tc.body)
+			if tc.succes {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+		})
+	}
 
-// }
+}
