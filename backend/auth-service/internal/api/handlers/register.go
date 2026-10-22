@@ -8,6 +8,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +17,11 @@ type RegisterHandler struct {
 	srvc   RegisterService
 	logger *zap.Logger
 }
+
+var registerRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "register_requests_total",
+	Help: "Total number of register requests",
+})
 
 func NewRegisterHandler(srvc RegisterService, logger *zap.Logger) *RegisterHandler {
 	return &RegisterHandler{
@@ -36,7 +43,7 @@ func NewRegisterHandler(srvc RegisterService, logger *zap.Logger) *RegisterHandl
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/register [post]
 func (h *RegisterHandler) Register(c *gin.Context) {
-	authRequestsTotal.Inc()
+	registerRequestsTotal.Inc()
 	var req dto.UsersRegisterDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -74,7 +81,7 @@ func (h *RegisterHandler) Register(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/verify-email [post]
 func (h *RegisterHandler) VerifyEmail(c *gin.Context) {
-	authRequestsTotal.Inc()
+	registerRequestsTotal.Inc()
 	var req dto.VerifyEmailDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -107,7 +114,7 @@ func (h *RegisterHandler) VerifyEmail(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/verify-email/resend [post]
 func (h *RegisterHandler) ResendVerifyEmail(c *gin.Context) {
-	authRequestsTotal.Inc()
+	registerRequestsTotal.Inc()
 	var req dto.VerifyEmailDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
