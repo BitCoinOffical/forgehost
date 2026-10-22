@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 )
 
 type AuthRepository interface {
@@ -45,4 +46,9 @@ type UserStore interface {
 
 type RabbitQueue interface {
 	AddEmailTaskQueue(ctx context.Context, body []byte) error
+}
+
+type ManagerToken interface {
+	ValidateToken(tokenString string) (*jwtpkg.Claims, error)
+	GenerateToken(userID uuid.UUID, UserRole string, IsVerified bool, IsBanned bool, ttl time.Duration) (string, error)
 }
