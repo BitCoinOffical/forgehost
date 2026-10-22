@@ -9,6 +9,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +26,11 @@ func NewPasswordHandler(srvc PasswordService, logger *zap.Logger) *PasswordHandl
 	}
 }
 
+var passwordRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "password_requests_total",
+	Help: "Total number of password requests",
+})
+
 // UpdatePassword godoc
 // @Summary      Update password (authenticated)
 // @Description  Changes the password of the currently authenticated user after verifying the old password.
@@ -38,7 +45,7 @@ func NewPasswordHandler(srvc PasswordService, logger *zap.Logger) *PasswordHandl
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/update [patch]
 func (h *PasswordHandler) UpdatePassword(c *gin.Context) {
-	authRequestsTotal.Inc()
+	passwordRequestsTotal.Inc()
 	var req *dto.UserPasswordDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -64,6 +71,8 @@ func (h *PasswordHandler) UpdatePassword(c *gin.Context) {
 		response.InternalServerError(c, err, "failed update password", h.logger)
 		return
 	}
+
+	c.Status(http.StatusOK)
 }
 
 // PasswordReset godoc
@@ -78,6 +87,7 @@ func (h *PasswordHandler) UpdatePassword(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/password/reset [post]
 func (h *PasswordHandler) PasswordReset(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -105,6 +115,7 @@ func (h *PasswordHandler) PasswordReset(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/reset/confirm [post]
 func (h *PasswordHandler) ConfirmPasswordReset(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -137,6 +148,7 @@ func (h *PasswordHandler) ConfirmPasswordReset(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/reset/resend [post]
 func (h *PasswordHandler) PasswordResetResend(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
