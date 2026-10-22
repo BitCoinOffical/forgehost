@@ -11,6 +11,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
@@ -24,6 +26,11 @@ type GoogleAuthHandler struct {
 	oauthCfg *oauth2.Config
 	logger   *zap.Logger
 }
+
+var oauthRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "oauth_requests_total",
+	Help: "Total number of oauth requests",
+})
 
 func NewGoogleAuthHandler(srvc GoogleAuthService, oauthCfg *oauth2.Config, logger *zap.Logger) *GoogleAuthHandler {
 	return &GoogleAuthHandler{
@@ -42,7 +49,7 @@ func NewGoogleAuthHandler(srvc GoogleAuthService, oauthCfg *oauth2.Config, logge
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/login/google [get]
 func (h *GoogleAuthHandler) GoogleLogin(c *gin.Context) {
-	authRequestsTotal.Inc()
+	oauthRequestsTotal.Inc()
 	oauthState, err := jwtpkg.GenerateRandomString()
 	if err != nil {
 		response.InternalServerError(c, err, "failed generate session id", h.logger)
@@ -78,10 +85,14 @@ func (h *GoogleAuthHandler) GoogleLogin(c *gin.Context) {
 // @Failure      502  {object}  map[string]string  "userinfo request failed"
 // @Router       /auth/login/google/callback [get]
 func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
-	authRequestsTotal.Inc()
+	oauthRequestsTotal.Inc()
 	storedId, err := c.Cookie("oauth_state")
-	if err != nil || c.Query("state") != storedId {
+	if err != nil {
 		response.BadRequest(c, err, "invalid state", h.logger)
+		return
+	}
+	if c.Query("state") != storedId {
+		response.BadRequest(c, domain.ErrOauthStateMismatch, "invalid state", h.logger)
 		return
 	}
 
@@ -97,7 +108,7 @@ func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
 
 	code := c.Query("code")
 	if code == "" {
-		response.BadRequest(c, err, "empty query", h.logger)
+		response.BadRequest(c, domain.ErrEmptyValue, "empty query", h.logger)
 		return
 	}
 
@@ -127,7 +138,7 @@ func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	if !req.EmailVerified {
-		response.Forbidden(c, err, "email not verified", h.logger)
+		response.Forbidden(c, domain.ErrNotVerified, "email not verified", h.logger)
 		return
 	}
 
@@ -152,7 +163,7 @@ func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/exchange [post]
 func (h *GoogleAuthHandler) Exchange(c *gin.Context) {
-	authRequestsTotal.Inc()
+	oauthRequestsTotal.Inc()
 	var req dto.ExchangeRequestDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -181,7 +192,7 @@ func (h *GoogleAuthHandler) Exchange(c *gin.Context) {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/login/google [post]
 func (h *GoogleAuthHandler) GoogleLoginAndroid(c *gin.Context) {
-	authRequestsTotal.Inc()
+	oauthRequestsTotal.Inc()
 	var req dto.GoogleAndroidUserDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
