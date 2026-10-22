@@ -8,6 +8,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +17,11 @@ type RefreshHandler struct {
 	srvc   RefreshService
 	logger *zap.Logger
 }
+
+var tokensRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "tokens_requests_total",
+	Help: "Total number of tokens requests",
+})
 
 func NewRefreshHandler(srvc RefreshService, logger *zap.Logger) *RefreshHandler {
 	return &RefreshHandler{
@@ -36,7 +43,7 @@ func NewRefreshHandler(srvc RefreshService, logger *zap.Logger) *RefreshHandler 
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/refresh [post]
 func (h *RefreshHandler) UpdateAccessToken(c *gin.Context) {
-	authRequestsTotal.Inc()
+	tokensRequestsTotal.Inc()
 	var req dto.UpdateTokensDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
