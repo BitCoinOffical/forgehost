@@ -30,7 +30,7 @@ type GoogleUserDTO struct {
 type UsersRegisterDTO struct {
 	Email         string `json:"email" binding:"required,email,max=255"`
 	Password      string `json:"password" binding:"required,min=8"`
-	PasswordRetry string `json:"password_retry" binding:"required,min=8,eqfield=NewPassword"`
+	PasswordRetry string `json:"password_retry" binding:"required,min=8,eqfield=Password"`
 }
 
 type UsersLoginDTO struct {
