@@ -8,6 +8,8 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"go.uber.org/zap"
 )
 
@@ -15,6 +17,11 @@ type LoginHandler struct {
 	srvc   LoginService
 	logger *zap.Logger
 }
+
+var loginRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "login_requests_total",
+	Help: "Total number of login requests",
+})
 
 func NewLoginHandler(srvc LoginService, logger *zap.Logger) *LoginHandler {
 	return &LoginHandler{
@@ -36,7 +43,7 @@ func NewLoginHandler(srvc LoginService, logger *zap.Logger) *LoginHandler {
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/login [post]
 func (h *LoginHandler) Login(c *gin.Context) {
-	authRequestsTotal.Inc()
+	loginRequestsTotal.Inc()
 	var req dto.UsersLoginDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
