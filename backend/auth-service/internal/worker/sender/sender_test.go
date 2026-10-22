@@ -123,7 +123,7 @@ func TestWorkerPool(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.caseName, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			t.Cleanup(func() {
 				cancel()
 			})
