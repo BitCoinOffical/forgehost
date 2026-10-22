@@ -15,6 +15,7 @@ import (
 	time "time"
 
 	models "github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
+	jwt "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 	uuid "github.com/google/uuid"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -466,4 +467,58 @@ func (m *MockRabbitQueue) AddEmailTaskQueue(ctx context.Context, body []byte) er
 func (mr *MockRabbitQueueMockRecorder) AddEmailTaskQueue(ctx, body any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEmailTaskQueue", reflect.TypeOf((*MockRabbitQueue)(nil).AddEmailTaskQueue), ctx, body)
+}
+
+// MockManagerToken is a mock of ManagerToken interface.
+type MockManagerToken struct {
+	ctrl     *gomock.Controller
+	recorder *MockManagerTokenMockRecorder
+	isgomock struct{}
+}
+
+// MockManagerTokenMockRecorder is the mock recorder for MockManagerToken.
+type MockManagerTokenMockRecorder struct {
+	mock *MockManagerToken
+}
+
+// NewMockManagerToken creates a new mock instance.
+func NewMockManagerToken(ctrl *gomock.Controller) *MockManagerToken {
+	mock := &MockManagerToken{ctrl: ctrl}
+	mock.recorder = &MockManagerTokenMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockManagerToken) EXPECT() *MockManagerTokenMockRecorder {
+	return m.recorder
+}
+
+// GenerateToken mocks base method.
+func (m *MockManagerToken) GenerateToken(userID uuid.UUID, UserRole string, IsVerified, IsBanned bool, ttl time.Duration) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateToken", userID, UserRole, IsVerified, IsBanned, ttl)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateToken indicates an expected call of GenerateToken.
+func (mr *MockManagerTokenMockRecorder) GenerateToken(userID, UserRole, IsVerified, IsBanned, ttl any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateToken", reflect.TypeOf((*MockManagerToken)(nil).GenerateToken), userID, UserRole, IsVerified, IsBanned, ttl)
+}
+
+// ValidateToken mocks base method.
+func (m *MockManagerToken) ValidateToken(tokenString string) (*jwt.Claims, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateToken", tokenString)
+	ret0, _ := ret[0].(*jwt.Claims)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateToken indicates an expected call of ValidateToken.
+func (mr *MockManagerTokenMockRecorder) ValidateToken(tokenString any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateToken", reflect.TypeOf((*MockManagerToken)(nil).ValidateToken), tokenString)
 }
