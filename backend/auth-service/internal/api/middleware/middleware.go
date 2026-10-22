@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/api/response"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	jwtpkg "github.com/BitCoinOffical/forgehost/auth-service/pkg/jwt"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/ulule/limiter/v3"
@@ -32,11 +32,11 @@ const (
 
 type Middleware struct {
 	rdb    *redis.Client
-	tokens *jwtpkg.ManagerToken
+	tokens ManagerToken
 	logger *zap.Logger
 }
 
-func NewMiddleware(rdb *redis.Client, logger *zap.Logger, tokens *jwtpkg.ManagerToken) *Middleware {
+func NewMiddleware(rdb *redis.Client, logger *zap.Logger, tokens ManagerToken) *Middleware {
 	return &Middleware{rdb: rdb, logger: logger, tokens: tokens}
 }
 
@@ -100,19 +100,19 @@ func (m *Middleware) RateLimiter() gin.HandlerFunc {
 
 	rate, err := limiter.NewRateFromFormatted("10-M")
 	if err != nil {
-		logger.Fatal("limiter.NewRateFromFormatted", zap.Error(err))
+		m.logger.Fatal("limiter.NewRateFromFormatted", zap.Error(err))
 	}
 
 	store, err := redisstore.NewStoreWithOptions(m.rdb, limiter.StoreOptions{
 		Prefix: prefix,
 	})
 	if err != nil {
-		logger.Fatal("redisstore.NewStoreWithOptions:", zap.Error(err))
+		m.logger.Fatal("redisstore.NewStoreWithOptions:", zap.Error(err))
 	}
 	instance := limiter.New(store, rate)
 
 	return limitergin.NewMiddleware(instance, limitergin.WithLimitReachedHandler(func(c *gin.Context) {
-		response.ManyRequest(c, err, "too many requests", m.logger)
+		response.ManyRequest(c, domain.ErrToManyRequest, "too many requests", m.logger)
 		c.Abort()
 	}))
 
