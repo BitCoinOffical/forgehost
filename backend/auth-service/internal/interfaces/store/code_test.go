@@ -37,6 +37,12 @@ func TestSaveVerificationCode(t *testing.T) {
 			err := store.SaveVerificationCode(context.Background(), tc.data.randStr, tc.data.code, tc.data.expiration)
 			if tc.success {
 				require.NoError(t, err)
+
+				codeStr, err := store.GetVerificationCode(context.Background(), tc.data.randStr)
+				require.NoError(t, err)
+				code, err := strconv.Atoi(codeStr)
+				require.NoError(t, err)
+				assert.Equal(t, tc.data.code, code)
 			} else {
 				require.Error(t, err)
 			}
@@ -57,7 +63,7 @@ func TestSaveResetPasswordCode(t *testing.T) {
 		success bool
 	}{
 		{
-			caseName: "save verification code",
+			caseName: "save reset password code",
 			data: struct {
 				randStr    string
 				code       int
@@ -71,12 +77,19 @@ func TestSaveResetPasswordCode(t *testing.T) {
 			err := store.SaveResetPasswordCode(context.Background(), tc.data.randStr, tc.data.code, tc.data.expiration)
 			if tc.success {
 				require.NoError(t, err)
+
+				codeStr, err := store.GetResetPasswordCode(context.Background(), tc.data.randStr)
+				require.NoError(t, err)
+				code, err := strconv.Atoi(codeStr)
+				require.NoError(t, err)
+				assert.Equal(t, tc.data.code, code)
 			} else {
 				require.Error(t, err)
 			}
 		})
 	}
 }
+
 func TestSaveOauthCode(t *testing.T) {
 	client := setupTestDB(t)
 	store := NewCodeStore(client)
@@ -103,12 +116,17 @@ func TestSaveOauthCode(t *testing.T) {
 			err := store.SaveOauthCode(context.Background(), tc.data.oauthCode, tc.data.userID)
 			if tc.success {
 				require.NoError(t, err)
+
+				userID, err := store.GetOauthCode(context.Background(), tc.data.oauthCode)
+				require.NoError(t, err)
+				assert.Equal(t, tc.data.userID, userID)
 			} else {
 				require.Error(t, err)
 			}
 		})
 	}
 }
+
 func TestGetOauthCode(t *testing.T) {
 	client := setupTestDB(t)
 	store := NewCodeStore(client)
@@ -144,6 +162,7 @@ func TestGetOauthCode(t *testing.T) {
 				assert.Equal(t, tc.userID, userID)
 			} else {
 				require.Error(t, err)
+				assert.Empty(t, userID)
 			}
 		})
 	}
@@ -215,12 +234,14 @@ func TestGetResetPasswordCode(t *testing.T) {
 				require.NoError(t, err)
 			}
 			codeStr, err := store.GetResetPasswordCode(context.Background(), tc.randStr)
-			code, err := strconv.Atoi(codeStr)
 			if tc.success {
+				require.NoError(t, err)
+				code, err := strconv.Atoi(codeStr)
 				require.NoError(t, err)
 				assert.Equal(t, tc.code, code)
 			} else {
 				require.Error(t, err)
+				assert.Empty(t, codeStr)
 			}
 		})
 	}
@@ -253,16 +274,18 @@ func TestGetVerificationCode(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.caseName, func(t *testing.T) {
 			if tc.f != nil {
-				err := tc.f(context.Background(), tc.randStr, tc.code, 5*time.Second)
+				err := tc.f(context.Background(), tc.randStr, tc.code, 5*time.Minute)
 				require.NoError(t, err)
 			}
 			codeStr, err := store.GetVerificationCode(context.Background(), tc.randStr)
-			code, err := strconv.Atoi(codeStr)
 			if tc.success {
+				require.NoError(t, err)
+				code, err := strconv.Atoi(codeStr)
 				require.NoError(t, err)
 				assert.Equal(t, tc.code, code)
 			} else {
 				require.Error(t, err)
+				assert.Empty(t, codeStr)
 			}
 		})
 	}
