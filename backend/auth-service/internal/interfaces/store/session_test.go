@@ -31,12 +31,17 @@ func TestSaveToken(t *testing.T) {
 			err := store.SaveToken(context.Background(), tc.userID, tc.token, 5*time.Minute)
 			if tc.success {
 				require.NoError(t, err)
+
+				token, err := store.GetToken(context.Background(), tc.userID)
+				require.NoError(t, err)
+				assert.Equal(t, tc.token, token)
 			} else {
 				require.Error(t, err)
 			}
 		})
 	}
 }
+
 func TestGetToken(t *testing.T) {
 	client := setupTestDB(t)
 	store := NewSessionStore(client)
@@ -90,6 +95,7 @@ func TestGetToken(t *testing.T) {
 		})
 	}
 }
+
 func TestDeleteToken(t *testing.T) {
 	client := setupTestDB(t)
 	store := NewSessionStore(client)
@@ -99,8 +105,7 @@ func TestDeleteToken(t *testing.T) {
 			userID uuid.UUID
 			token  string
 		}
-		f       func(ctx context.Context, userID uuid.UUID, token string, RefreshTTL time.Duration) error
-		success bool
+		f func(ctx context.Context, userID uuid.UUID, token string, RefreshTTL time.Duration) error
 	}{
 		{
 			caseName: "delete token",
@@ -111,11 +116,10 @@ func TestDeleteToken(t *testing.T) {
 				userID: uuid.New(),
 				token:  "token",
 			},
-			f:       store.SaveToken,
-			success: false,
+			f: store.SaveToken,
 		},
 		{
-			caseName: "get delete token",
+			caseName: "delete not found token",
 			data: struct {
 				userID uuid.UUID
 				token  string
@@ -123,7 +127,6 @@ func TestDeleteToken(t *testing.T) {
 				userID: uuid.New(),
 				token:  "not found",
 			},
-			success: false,
 		},
 	}
 	for _, tc := range testCases {
@@ -133,14 +136,11 @@ func TestDeleteToken(t *testing.T) {
 				require.NoError(t, err)
 			}
 			err := store.DeleteToken(context.Background(), tc.data.userID)
+			require.NoError(t, err)
+
 			token, err := store.GetToken(context.Background(), tc.data.userID)
-			if tc.success {
-				require.NoError(t, err)
-				assert.Equal(t, tc.data.token, token)
-			} else {
-				require.Error(t, err)
-				assert.Equal(t, "", token)
-			}
+			require.Error(t, err)
+			assert.Equal(t, "", token)
 		})
 	}
 }
