@@ -45,6 +45,7 @@ func (r *MessagesRepo) GetUsersFromChat(ctx context.Context, chatID string) ([]m
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Query: %w", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var fcm models.FeedChatMember
 		if err := rows.Scan(
