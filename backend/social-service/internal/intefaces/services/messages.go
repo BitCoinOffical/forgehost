@@ -9,17 +9,14 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"go.mongodb.org/mongo-driver/v2/bson"
-
-	mongorepo "github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/mongo"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
 )
 
 type MessageService struct {
-	repo  *postgres.MessagesRepo
-	mrepo *mongorepo.MessagerRepo
+	repo  MessagesRepo
+	mrepo MessagerRepo
 }
 
-func NewMessageService(repo *postgres.MessagesRepo, mrepo *mongorepo.MessagerRepo) *MessageService {
+func NewMessageService(repo MessagesRepo, mrepo MessagerRepo) *MessageService {
 	return &MessageService{repo: repo, mrepo: mrepo}
 }
 
