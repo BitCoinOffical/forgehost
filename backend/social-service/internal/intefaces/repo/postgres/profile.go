@@ -31,7 +31,9 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 	if err != nil {
 		return nil, nil, fmt.Errorf("r.pool.Begin: %w", err)
 	}
-
+	defer func() {
+		tx.Rollback(context.Background())
+	}()
 	sql := `
 		SELECT p.user_id, p.username, p.bio, p.avatar_url, p.is_banned, p.created_at, p.updated_at, 
 		(
@@ -83,13 +85,17 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 		ps.views,
 		(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
 		FROM posts ps 
-        JOIN profiles p ON p.user_id = $1 AND ps.is_delete = false
+        JOIN profiles p ON p.user_id = ps.user_id WHERE ps.user_id = $1 AND ps.is_delete = false
 		ORDER BY ps.created_at DESC
 	`, id)
 	if err != nil {
 		return nil, nil, fmt.Errorf("tx.Query: %w", err)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("rows.Err: %w", err)
+	}
 
+	defer rows.Close()
 	fds := make([]models.FeedPost, 0)
 	for rows.Next() {
 		var fd models.FeedPost
@@ -108,6 +114,10 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 			return nil, nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 		fds = append(fds, fd)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("rows.Err: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -184,7 +194,12 @@ func (r *ProfileRepo) BuildUpdateProfile(ctx context.Context, profile *models.Pr
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
+			return nil, domain.ErrNotFound
+		}
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return nil, domain.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
 	}
@@ -193,12 +208,12 @@ func (r *ProfileRepo) BuildUpdateProfile(ctx context.Context, profile *models.Pr
 }
 
 func (r *ProfileRepo) GetSubscriptions(ctx context.Context, id string) ([]models.Subscriptions, error) {
-	sql := `SELECT user_id FROM subscriptions WHERE target_id = 2`
-	var subs []models.Subscriptions
+	sql := `SELECT user_id FROM subscriptions WHERE target_user_id = $1`
 	rows, err := r.pool.Query(ctx, sql, id)
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Query: %w", err)
 	}
+	var subs []models.Subscriptions
 	for rows.Next() {
 		var sub models.Subscriptions
 		if err := rows.Scan(&sub.UserID); err != nil {
@@ -214,12 +229,12 @@ func (r *ProfileRepo) GetSubscriptions(ctx context.Context, id string) ([]models
 }
 
 func (r *ProfileRepo) GetSubscribers(ctx context.Context, id string) ([]models.Subscribes, error) {
-	sql := `SELECT target_id FROM subscriptions WHERE user_id = 2`
-	var subscr []models.Subscribes
+	sql := `SELECT target_user_id FROM subscriptions WHERE user_id = $1 AND target_user_id IS NOT NULL`
 	rows, err := r.pool.Query(ctx, sql, id)
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Query: %w", err)
 	}
+	var subscr []models.Subscribes
 	for rows.Next() {
 		var subcr models.Subscribes
 		if err := rows.Scan(&subcr.TargetID); err != nil {
@@ -235,7 +250,7 @@ func (r *ProfileRepo) GetSubscribers(ctx context.Context, id string) ([]models.S
 }
 
 func (r *ProfileRepo) Subscribe(ctx context.Context, userID, targetID string) error {
-	sql := `INSERT INTO subscriptions (user_id, target_id, created_at) VALUES ($1, $2, NOW())`
+	sql := `INSERT INTO subscriptions (user_id, target_user_id, created_at) VALUES ($1, $2, NOW())`
 	_, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -248,18 +263,26 @@ func (r *ProfileRepo) Subscribe(ctx context.Context, userID, targetID string) er
 }
 
 func (r *ProfileRepo) UnSubscribe(ctx context.Context, userID, targetID string) error {
-	sql := `DELETE FROM subscriptions WHERE user_id = $1 AND target_id = $2`
-	_, err := r.pool.Exec(ctx, sql, userID, targetID)
+	sql := `DELETE FROM subscriptions WHERE user_id = $1 AND target_user_id = $2`
+	tag, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
 	}
 	return nil
 }
 
 func (r *ProfileRepo) CreateProfileReport(ctx context.Context, userID, targetID, cause string) error {
-	sql := `INSERT INTO profile_reports (user_id, target_id, cause, created_at, updated_at) VALUES $1, $2, $3, NOW(), NOW()`
+	sql := `INSERT INTO profile_reports (user_id, target_id, cause, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW())`
 	_, err := r.pool.Exec(ctx, sql, userID, targetID, cause)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return fmt.Errorf("r.pool.Exec: %w", domain.ErrAlreadyExists)
+		}
+
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
 	return nil
@@ -269,6 +292,10 @@ func (r *ProfileRepo) Block(ctx context.Context, userID, targetID string) error 
 	sql := `INSERT INTO blocks (user_id, target_id) VALUES ($1, $2)`
 	_, err := r.pool.Exec(ctx, sql, userID, targetID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return fmt.Errorf("r.pool.Exec: %w", domain.ErrAlreadyExists)
+		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
 	return nil
