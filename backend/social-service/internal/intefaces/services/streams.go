@@ -9,16 +9,14 @@ import (
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/store"
 )
 
 type StreamService struct {
-	store *store.StreamStore
-	repo  *postgres.StreamRepo
+	store StreamStore
+	repo  StreamRepo
 }
 
-func NewStreamService(store *store.StreamStore, repo *postgres.StreamRepo) *StreamService {
+func NewStreamService(store StreamStore, repo StreamRepo) *StreamService {
 	return &StreamService{store: store, repo: repo}
 }
 
