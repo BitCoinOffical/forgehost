@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,6 +28,10 @@ func TestResendLimitAdd(t *testing.T) {
 			err := store.ResendLimitAdd(context.Background(), tc.email)
 			if tc.success {
 				require.NoError(t, err)
+
+				email, err := store.ResendLimitCheck(context.Background(), tc.email)
+				require.NoError(t, err)
+				assert.Equal(t, tc.email, email)
 			} else {
 				require.Error(t, err)
 			}
@@ -58,7 +63,7 @@ func TestResendLimitCheck(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.caseName, func(t *testing.T) {
 			if tc.f != nil {
-				err := store.ResendLimitAdd(context.Background(), tc.email)
+				err := tc.f(context.Background(), tc.email)
 				require.NoError(t, err)
 			}
 			email, err := store.ResendLimitCheck(context.Background(), tc.email)
@@ -66,7 +71,7 @@ func TestResendLimitCheck(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tc.email, email)
 			} else {
-				require.Error(t, err)
+				require.ErrorIs(t, err, domain.ErrNotFound)
 				assert.Equal(t, "", email)
 			}
 		})
