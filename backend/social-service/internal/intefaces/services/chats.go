@@ -7,14 +7,13 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
 )
 
 type ChatService struct {
-	repo *postgres.ChatsRepo
+	repo ChatsRepo
 }
 
-func NewChatService(repo *postgres.ChatsRepo) *ChatService {
+func NewChatService(repo ChatsRepo) *ChatService {
 	return &ChatService{repo: repo}
 }
 func (s *ChatService) CreateGroup(ctx context.Context, ownerID string, req *dto.CreateChatDTO) (string, error) {
