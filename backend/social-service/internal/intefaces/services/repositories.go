@@ -6,6 +6,7 @@ import (
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type CommentsRepo interface {
@@ -17,6 +18,7 @@ type CommentsRepo interface {
 	LikeComment(ctx context.Context, userId, commentId string) error
 	UnlikeComment(ctx context.Context, userId, commentId string) error
 }
+
 type PostsRepo interface {
 	GetPostByID(ctx context.Context, id string) (*models.FeedPost, error)
 	ViewPost(ctx context.Context, id string) error
@@ -40,6 +42,7 @@ type PostsRepo interface {
 type PostsCache interface {
 	GetGlobal(ctx context.Context, cursor string) ([]models.FeedPost, error)
 	SetGlobal(ctx context.Context, posts []models.FeedPost, cursor string) error
+	DeleteGlobal(ctx context.Context, cursor string) error
 }
 
 type ProfileRepo interface {
@@ -52,4 +55,53 @@ type ProfileRepo interface {
 	UnSubscribe(ctx context.Context, userId, targetId string) error
 	CreateProfileReport(ctx context.Context, userId, targetId, cause string) error
 	Block(ctx context.Context, userID, targetID string) error
+}
+
+type ChatsRepo interface {
+	CreateGroup(ctx context.Context, ownerID string, chat *models.Chat) (string, error)
+	CreateDirect(ctx context.Context, userID, targetID string) (string, error)
+	GetChatByID(ctx context.Context, chatID string) (*models.Chat, error)
+	DeleteChat(ctx context.Context, chatID, ownerID string) error
+	LeaveChat(ctx context.Context, chatID, userID string) error
+	BuildUpdateChat(ctx context.Context, chatID, userID string, chat *models.Chat) (*models.Chat, error)
+	SetUserRoleChat(ctx context.Context, ownerID string, members *models.ChatMember) (*models.ChatMember, error)
+	AddUserInChat(ctx context.Context, chatID, userID string) error
+	KickUserFromChat(ctx context.Context, chatID, targetID, userID string) error
+	GetUsersFromChat(ctx context.Context, chatID string) ([]models.FeedChatMember, error)
+	BanUser(ctx context.Context, chatID, targetID, userID string) error
+	UnbanUser(ctx context.Context, chatID, targetID, userID string) error
+	CheckBanUser(ctx context.Context, chatID, targetID string) (bool, error)
+	CheckBlock(ctx context.Context, userID, targetID string) (bool, error)
+	GetChatList(ctx context.Context, userID string) ([]models.FeedDirects, error)
+	TouchChat(ctx context.Context, chatID string) error
+	MarkAsRead(ctx context.Context, chatID, userID string) error
+}
+
+type MessagesRepo interface {
+	CheckBlock(ctx context.Context, userID, targetID string) (bool, error)
+	CheckBanUser(ctx context.Context, chatID, targetID string) (bool, error)
+	GetUsersFromChat(ctx context.Context, chatID string) ([]models.FeedChatMember, error)
+}
+
+type MessagerRepo interface {
+	SaveMessage(ctx context.Context, msg *models.Message) (*bson.ObjectID, error)
+	GetMessages(ctx context.Context, chatID string) ([]models.Message, error)
+}
+
+type StreamRepo interface {
+	SaveChannel(ctx context.Context, channelID, userID string) error
+	GetChannel(ctx context.Context, userID string) (string, error)
+	SaveStream(ctx context.Context, stream *models.Stream) (string, error)
+	BuildUpdateStream(ctx context.Context, stream *models.Stream) (*models.Stream, error)
+	DeleteStream(ctx context.Context, videoID, userID string) error
+	DeleteComplatedStreams(ctx context.Context) error
+	GetStream(ctx context.Context, videoID, userID string) (*models.Stream, error)
+	GetCursorStreams(ctx context.Context, streamID string, createdAt time.Time) ([]models.FeedStream, error)
+}
+
+type StreamStore interface {
+	SaveStreamMessage(ctx context.Context, videoID string, msg *models.Message) error
+	GetStreamMessages(ctx context.Context, videoID string) ([]models.Message, error)
+	SaveStreamUser(ctx context.Context, userID, videoID string) error
+	GetStreamUsers(ctx context.Context, videoID string) ([]string, error)
 }
