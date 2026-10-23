@@ -32,7 +32,6 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 				WithOccurrence(2),
 		),
 	)
-
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, container.Terminate(ctx))
@@ -43,18 +42,12 @@ func setupTestDB(t *testing.T) *pgxpool.Pool {
 
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
-
 	t.Cleanup(func() {
 		pool.Close()
 	})
 
 	err = migrations.RunMigrations(pool)
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		migrations.RollbackLast(ctx, pool)
-		require.NoError(t, err)
-	})
 
 	return pool
 }
@@ -186,7 +179,8 @@ func TestSaveGoogleUser(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.caseName, func(t *testing.T) {
 			if tc.f != nil {
-				tc.f(context.Background(), tc.data)
+				_, err := tc.f(context.Background(), tc.data)
+				require.NoError(t, err)
 			}
 			userID, err := repo.SaveGoogleUser(context.Background(), tc.data, tc.oathData)
 			if tc.succes {
@@ -241,7 +235,9 @@ func TestGetUserByID(t *testing.T) {
 			user, err := repo.GetUserByID(context.Background(), UserID)
 			if tc.succes {
 				require.NoError(t, err)
-				assert.NotEmpty(t, user)
+				require.NotNil(t, user)
+				assert.Equal(t, tc.data.Email, user.Email)
+				assert.Equal(t, tc.data.PasswordHash, user.PasswordHash)
 				return
 			}
 			require.Error(t, err)
@@ -282,15 +278,19 @@ func TestGetUserByEmail(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.caseName, func(t *testing.T) {
+			var userID uuid.UUID
 			if tc.f != nil {
-				_, err := tc.f(context.Background(), tc.data)
+				id, err := tc.f(context.Background(), tc.data)
 				require.NoError(t, err)
+				userID = id
 			}
 
 			user, err := repo.GetUserByEmail(context.Background(), tc.data.Email)
 			if tc.succes {
 				require.NoError(t, err)
-				assert.NotEmpty(t, user)
+				require.NotNil(t, user)
+				assert.Equal(t, userID, user.ID)
+				assert.Equal(t, tc.data.PasswordHash, user.PasswordHash)
 				return
 			}
 			require.Error(t, err)
@@ -307,6 +307,7 @@ func TestUpdateUserPassword(t *testing.T) {
 	testCases := []struct {
 		caseName string
 		data     *models.User
+		newHash  []byte
 		f        func(ctx context.Context, req *models.User) (uuid.UUID, error)
 		succes   bool
 	}{
@@ -314,19 +315,21 @@ func TestUpdateUserPassword(t *testing.T) {
 			caseName: "update user password",
 			data: &models.User{
 				Email:        "user@gmail.com",
-				PasswordHash: []byte("new_password_hash"),
+				PasswordHash: []byte("old_password_hash"),
 			},
-			f:      repo.SaveUser,
-			succes: true,
+			newHash: []byte("new_password_hash"),
+			f:       repo.SaveUser,
+			succes:  true,
 		},
 		{
 			caseName: "failed update user password",
 			data: &models.User{
 				ID:           uuid.New(),
 				Email:        "notfound@gmail.com",
-				PasswordHash: []byte("new_password_hash"),
+				PasswordHash: []byte("old_password_hash"),
 			},
-			succes: false,
+			newHash: []byte("new_password_hash"),
+			succes:  false,
 		},
 	}
 
@@ -335,7 +338,7 @@ func TestUpdateUserPassword(t *testing.T) {
 			user := models.User{
 				ID:           tc.data.ID,
 				Email:        tc.data.Email,
-				PasswordHash: tc.data.PasswordHash,
+				PasswordHash: tc.newHash,
 			}
 			if tc.f != nil {
 				userID, err := tc.f(context.Background(), tc.data)
@@ -346,13 +349,16 @@ func TestUpdateUserPassword(t *testing.T) {
 			err := repo.UpdateUserPassword(context.Background(), &user)
 			if tc.succes {
 				require.NoError(t, err)
+
+				saved, err := repo.GetUserByID(context.Background(), user.ID)
+				require.NoError(t, err)
+				assert.Equal(t, tc.newHash, saved.PasswordHash)
 				return
 			}
 			require.Error(t, err)
 		})
 	}
 }
-
 func TestCheckExistsUserByEmail(t *testing.T) {
 	pool := setupTestDB(t)
 	defer cleanDB(t, pool)
