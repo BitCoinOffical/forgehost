@@ -1,0 +1,160 @@
+package services
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
+)
+
+type ChatService struct {
+	repo ChatsRepo
+}
+
+func NewChatService(repo ChatsRepo) *ChatService {
+	return &ChatService{repo: repo}
+}
+func (s *ChatService) CreateGroup(ctx context.Context, ownerID string, req *dto.CreateChatDTO) (string, error) {
+	chat := models.Chat{
+		Title:       &req.Title,
+		Description: req.Description,
+	}
+
+	chatID, err := s.repo.CreateGroup(ctx, ownerID, &chat)
+	if err != nil {
+		return "", fmt.Errorf("s.repo.CreateGroup: %w", err)
+	}
+
+	return chatID, nil
+}
+
+func (s *ChatService) CreateDirect(ctx context.Context, userID, targetID string) (string, error) {
+	blocked, err := s.repo.CheckBlock(ctx, userID, targetID)
+	if err != nil {
+		return "", fmt.Errorf("s.repo.CheckBlock: %w", err)
+	}
+	if blocked {
+		return "", domain.ErrForbidden
+	}
+	chatID, err := s.repo.CreateDirect(ctx, userID, targetID)
+	if err != nil {
+		return "", fmt.Errorf("s.repo.CreateDirect: %w", err)
+	}
+
+	return chatID, nil
+}
+
+func (s *ChatService) GetChatList(ctx context.Context, userID string) ([]models.FeedDirects, error) {
+	fd, err := s.repo.GetChatList(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.GetChatList: %w", err)
+	}
+	return fd, nil
+}
+
+func (s *ChatService) MarkAsRead(ctx context.Context, chatID, userID string) error {
+	if err := s.repo.MarkAsRead(ctx, chatID, userID); err != nil {
+		return fmt.Errorf("s.repo.MarkAsRead: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) GetChatByID(ctx context.Context, chatID string) (*models.Chat, error) {
+	chat, err := s.repo.GetChatByID(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.GetChatByID: %w", err)
+	}
+	return chat, nil
+}
+
+func (s *ChatService) DeleteChat(ctx context.Context, chatID, ownerID string) error {
+	if err := s.repo.DeleteChat(ctx, chatID, ownerID); err != nil {
+		return fmt.Errorf("s.repo.DeleteChat: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) LeaveChat(ctx context.Context, chatID, userID string) error {
+	if err := s.repo.LeaveChat(ctx, chatID, userID); err != nil {
+		return fmt.Errorf("s.repo.LeaveChat: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) BuildUpdateChat(ctx context.Context, chatID, userID string, req *dto.UpdateChatDTO) (*models.Chat, error) {
+	chat := models.Chat{
+		Title:       req.Title,
+		Description: req.Description,
+	}
+	resp, err := s.repo.BuildUpdateChat(ctx, chatID, userID, &chat)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.BuildUpdateChat: %w", err)
+	}
+	return resp, nil
+}
+
+func (s *ChatService) SetUserRoleChat(ctx context.Context, chatID, ownerID string, req *dto.SetMemberRoleDTO) (*models.ChatMember, error) {
+	members := models.ChatMember{
+		ChatID: chatID,
+		UserID: req.UserID,
+		Role:   models.MemberRole(req.Role),
+	}
+	resp, err := s.repo.SetUserRoleChat(ctx, ownerID, &members)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.SetUserRoleChat: %w", err)
+	}
+	return resp, nil
+}
+
+func (s *ChatService) AddUserInChat(ctx context.Context, chatID, userID string) error {
+	banned, err := s.repo.CheckBanUser(ctx, chatID, userID)
+	if err != nil {
+		return fmt.Errorf("s.repo.CheckBanUser: %w", err)
+	}
+	if banned {
+		return domain.ErrForbidden
+	}
+	if err := s.repo.AddUserInChat(ctx, chatID, userID); err != nil {
+		return fmt.Errorf("s.repo.AddUserInChat: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) KickUserFromChat(ctx context.Context, chatID, targetID, userID string) error {
+	if err := s.repo.KickUserFromChat(ctx, chatID, targetID, userID); err != nil {
+		return fmt.Errorf("s.repo.KickUserFromChat: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) GetUsersFromChat(ctx context.Context, chatID string) ([]models.FeedChatMember, error) {
+	resp, err := s.repo.GetUsersFromChat(ctx, chatID)
+	if err != nil {
+		return nil, fmt.Errorf("s.repo.GetUsersFromChat: %w", err)
+	}
+	return resp, nil
+}
+
+func (s *ChatService) BanUser(ctx context.Context, chatID, targetID, userID string) error {
+	if err := s.repo.BanUser(ctx, chatID, targetID, userID); err != nil {
+		return fmt.Errorf("s.repo.BanUser: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) UnbanUser(ctx context.Context, chatID, targetID, userID string) error {
+	if err := s.repo.UnbanUser(ctx, chatID, targetID, userID); err != nil {
+		return fmt.Errorf("s.repo.UnbanUser: %w", err)
+	}
+	return nil
+}
+
+func (s *ChatService) CheckBanUser(ctx context.Context, chatID, targetID string) (bool, error) {
+	ok, err := s.repo.CheckBanUser(ctx, chatID, targetID)
+	if err != nil {
+		return false, fmt.Errorf("s.repo.CheckBanUser: %w", err)
+	}
+	return ok, nil
+}

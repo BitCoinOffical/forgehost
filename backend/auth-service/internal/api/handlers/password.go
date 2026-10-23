@@ -9,7 +9,27 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/zap"
 )
+
+type PasswordHandler struct {
+	srvc   PasswordService
+	logger *zap.Logger
+}
+
+func NewPasswordHandler(srvc PasswordService, logger *zap.Logger) *PasswordHandler {
+	return &PasswordHandler{
+		srvc:   srvc,
+		logger: logger,
+	}
+}
+
+var passwordRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "password_requests_total",
+	Help: "Total number of password requests",
+})
 
 // UpdatePassword godoc
 // @Summary      Update password (authenticated)
@@ -24,8 +44,8 @@ import (
 // @Failure      401  {object}  map[string]string  "missing token or invalid old password"
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/update [patch]
-func (h *AuthHandler) UpdatePassword(c *gin.Context) {
-	authRequestsTotal.Inc()
+func (h *PasswordHandler) UpdatePassword(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req *dto.UserPasswordDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -47,10 +67,12 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.authsrvc.UpdatePassword(c.Request.Context(), req, idStr); err != nil {
+	if err := h.srvc.UpdatePassword(c.Request.Context(), req, idStr); err != nil {
 		response.InternalServerError(c, err, "failed update password", h.logger)
 		return
 	}
+
+	c.Status(http.StatusOK)
 }
 
 // PasswordReset godoc
@@ -64,14 +86,15 @@ func (h *AuthHandler) UpdatePassword(c *gin.Context) {
 // @Failure      400      {object}  map[string]string  "invalid body"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/password/reset [post]
-func (h *AuthHandler) PasswordReset(c *gin.Context) {
+func (h *PasswordHandler) PasswordReset(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
-	key, err := h.authsrvc.PasswordReset(c.Request.Context(), &req)
+	key, err := h.srvc.PasswordReset(c.Request.Context(), &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed reset password", h.logger)
 		return
@@ -91,7 +114,8 @@ func (h *AuthHandler) PasswordReset(c *gin.Context) {
 // @Failure      400  {object}  map[string]string  "invalid body or passwords do not match"
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/reset/confirm [post]
-func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
+func (h *PasswordHandler) ConfirmPasswordReset(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
@@ -103,7 +127,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 		return
 	}
 
-	if err := h.authsrvc.ConfirmPasswordReset(c.Request.Context(), &req); err != nil {
+	if err := h.srvc.ConfirmPasswordReset(c.Request.Context(), &req); err != nil {
 		response.InternalServerError(c, err, "failed reset password", h.logger)
 		return
 	}
@@ -123,14 +147,15 @@ func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 // @Failure      429  {object}  map[string]string  "too many attempts"
 // @Failure      500  {object}  map[string]string
 // @Router       /auth/password/reset/resend [post]
-func (h *AuthHandler) PasswordResetResend(c *gin.Context) {
+func (h *PasswordHandler) PasswordResetResend(c *gin.Context) {
+	passwordRequestsTotal.Inc()
 	var req dto.PasswordResetDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
-	if err := h.authsrvc.PasswordResetResend(c.Request.Context(), &req); err != nil {
+	if err := h.srvc.PasswordResetResend(c.Request.Context(), &req); err != nil {
 		if errors.Is(err, domain.ErrToManyRequest) {
 			response.ManyRequest(c, err, "too many attempts", h.logger)
 			return

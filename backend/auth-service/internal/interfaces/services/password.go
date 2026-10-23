@@ -20,7 +20,31 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordDTO, userID string) error {
+type PasswordService struct {
+	repo        AuthRepository
+	codeStore   CodeStore
+	resendStore ResendStore
+	queue       RabbitQueue
+	logger      *zap.Logger
+}
+
+func NewPasswordService(
+	repo AuthRepository,
+	codeStore CodeStore,
+	resendStore ResendStore,
+	queue RabbitQueue,
+	logger *zap.Logger,
+) *PasswordService {
+	return &PasswordService{
+		repo:        repo,
+		codeStore:   codeStore,
+		resendStore: resendStore,
+		queue:       queue,
+		logger:      logger,
+	}
+}
+
+func (s *PasswordService) UpdatePassword(ctx context.Context, req *dto.UserPasswordDTO, userID string) error {
 	id, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("uuid.Parse: %w", err)
@@ -54,7 +78,7 @@ func (s *AuthService) UpdatePassword(ctx context.Context, req *dto.UserPasswordD
 	return nil
 }
 
-func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetDTO) (*dto.PendingKeyDTO, error) {
+func (s *PasswordService) PasswordReset(ctx context.Context, req *dto.PasswordResetDTO) (*dto.PendingKeyDTO, error) {
 	_, err := s.resendStore.ResendLimitCheck(ctx, req.Email)
 	if err == nil {
 		return nil, fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
@@ -75,7 +99,7 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 	if err != nil {
 		return nil, fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
-	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, ResetPassTTL); err != nil {
+	if err := s.codeStore.SaveResetPasswordCode(ctx, pendingKey, code, resetPassTTL); err != nil {
 		return nil, fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -85,7 +109,7 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		DispatchDate: time.Now().Add(ResetPassTTL),
+		DispatchDate: time.Now().Add(resetPassTTL),
 	}
 
 	body, err := json.Marshal(&queue)
@@ -104,7 +128,7 @@ func (s *AuthService) PasswordReset(ctx context.Context, req *dto.PasswordResetD
 	}, nil
 }
 
-func (s *AuthService) ConfirmPasswordReset(ctx context.Context, req *dto.PasswordResetDTO) error {
+func (s *PasswordService) ConfirmPasswordReset(ctx context.Context, req *dto.PasswordResetDTO) error {
 	pass, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("bcrypt.GenerateFromPassword: %w", err)
@@ -138,7 +162,7 @@ func (s *AuthService) ConfirmPasswordReset(ctx context.Context, req *dto.Passwor
 	return nil
 }
 
-func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.PasswordResetDTO) error {
+func (s *PasswordService) PasswordResetResend(ctx context.Context, req *dto.PasswordResetDTO) error {
 	_, err := s.resendStore.ResendLimitCheck(ctx, req.Email)
 	if err == nil {
 		return fmt.Errorf("s.resendStore.ResendLimitCheck: %w", domain.ErrToManyRequest)
@@ -154,7 +178,7 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 	if err != nil {
 		return fmt.Errorf("jwtpkg.GenerateSecureCode: %w", err)
 	}
-	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, ResetPassTTL); err != nil {
+	if err := s.codeStore.SaveResetPasswordCode(ctx, req.PendingKey, code, resetPassTTL); err != nil {
 		return fmt.Errorf("s.codeStore.SaveVerificationCode: %w", err)
 	}
 
@@ -164,7 +188,7 @@ func (s *AuthService) PasswordResetResend(ctx context.Context, req *dto.Password
 		Code:  codeStr,
 
 		TitleSubject: resetSubject,
-		DispatchDate: time.Now().Add(ResetPassTTL),
+		DispatchDate: time.Now().Add(resetPassTTL),
 	}
 
 	body, err := json.Marshal(&queue)

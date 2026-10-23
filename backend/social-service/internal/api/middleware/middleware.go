@@ -21,11 +21,13 @@ const (
 	bearerSchema        = "Bearer"
 	userContextKey      = "user_claims"
 	prefix              = "rate_limiter"
+	adminRole           = "admin"
 )
 
 const (
 	errEmptyToken   = "missing token"
 	errInvalidToken = "invalid token"
+	errRole         = "invalid role"
 )
 
 type Middleware struct {
@@ -40,23 +42,8 @@ func NewMiddleware(rdb *redis.Client, logger *zap.Logger, tokens *jwtpkg.Manager
 
 func (m *Middleware) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader(headerAuthorization)
-		if token == "" || !strings.HasPrefix(token, bearerSchema+" ") {
-			m.logger.Warn(errEmptyToken, zap.String("path", c.Request.URL.Path))
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": errEmptyToken,
-			})
-			return
-		}
-
-		tokenString := strings.TrimPrefix(token, bearerSchema+" ")
-
-		claims, err := m.tokens.ValidateToken(tokenString)
-		if err != nil {
-			m.logger.Warn(errInvalidToken, zap.String("path", c.Request.URL.Path), zap.Error(err))
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": errInvalidToken,
-			})
+		claims, ok := m.authenticate(c)
+		if !ok {
 			return
 		}
 
@@ -85,4 +72,48 @@ func (m *Middleware) RateLimiter() gin.HandlerFunc {
 		c.Abort()
 	}))
 
+}
+
+func (m *Middleware) RequireRole() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims, ok := m.authenticate(c)
+		if !ok {
+			return
+		}
+
+		if claims.UserRole != adminRole {
+			m.logger.Warn(errRole, zap.String("path", c.Request.URL.Path), zap.String("role", claims.UserRole))
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error": errRole,
+			})
+			return
+		}
+
+		c.Set(userContextKey, claims)
+		c.Next()
+	}
+}
+
+func (m *Middleware) authenticate(c *gin.Context) (*jwtpkg.Claims, bool) {
+	token := c.GetHeader(headerAuthorization)
+	if token == "" || !strings.HasPrefix(token, bearerSchema+" ") {
+		m.logger.Warn(errEmptyToken, zap.String("path", c.Request.URL.Path))
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": errEmptyToken,
+		})
+		return nil, false
+	}
+
+	tokenString := strings.TrimPrefix(token, bearerSchema+" ")
+
+	claims, err := m.tokens.ValidateToken(tokenString)
+	if err != nil {
+		m.logger.Warn(errInvalidToken, zap.String("path", c.Request.URL.Path), zap.Error(err))
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": errInvalidToken,
+		})
+		return nil, false
+	}
+
+	return claims, true
 }

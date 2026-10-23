@@ -8,7 +8,27 @@ import (
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.uber.org/zap"
 )
+
+type RefreshHandler struct {
+	srvc   RefreshService
+	logger *zap.Logger
+}
+
+var tokensRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	Name: "tokens_requests_total",
+	Help: "Total number of tokens requests",
+})
+
+func NewRefreshHandler(srvc RefreshService, logger *zap.Logger) *RefreshHandler {
+	return &RefreshHandler{
+		srvc:   srvc,
+		logger: logger,
+	}
+}
 
 // UpdateAccessToken godoc
 // @Summary      Refresh access token
@@ -22,15 +42,15 @@ import (
 // @Failure      401      {object}  map[string]string  "token not found or expired"
 // @Failure      500      {object}  map[string]string
 // @Router       /auth/refresh [post]
-func (h *AuthHandler) UpdateAccessToken(c *gin.Context) {
-	authRequestsTotal.Inc()
+func (h *RefreshHandler) UpdateAccessToken(c *gin.Context) {
+	tokensRequestsTotal.Inc()
 	var req dto.UpdateTokensDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
 	}
 
-	tokens, err := h.authsrvc.UpdateAccessToken(c.Request.Context(), req.RefreshToken)
+	tokens, err := h.srvc.UpdateAccessToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			response.Unauthorized(c, err, "not found token", h.logger)

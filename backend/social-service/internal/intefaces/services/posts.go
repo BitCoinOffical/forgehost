@@ -6,21 +6,20 @@ import (
 	v2 "encoding/json/v2"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo"
 	"github.com/google/uuid"
 )
 
 type PostsService struct {
-	repo  *repo.PostsRepo
-	cache *cache.Cache
+	repo  PostsRepo
+	cache PostsCache
 }
 
-func NewPostsService(repo *repo.PostsRepo, cache *cache.Cache) *PostsService {
+func NewPostsService(repo PostsRepo, cache PostsCache) *PostsService {
 	return &PostsService{repo: repo, cache: cache}
 }
 
@@ -46,9 +45,9 @@ func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.Fee
 	return result, nil
 }
 
-func (r *PostsService) GetGlobalPosts(ctx context.Context, id, cursor string) ([]models.FeedPost, error) {
+func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]models.FeedPost, error) {
 	var req dto.CursorDTO
-	var postId *uuid.UUID
+	var postID *uuid.UUID
 	if cursor != "" {
 		decoded, err := base64.URLEncoding.DecodeString(cursor)
 		if err != nil {
@@ -59,12 +58,12 @@ func (r *PostsService) GetGlobalPosts(ctx context.Context, id, cursor string) ([
 			return nil, fmt.Errorf("v2.Unmarshal: %w", err)
 		}
 
-		id, err := uuid.Parse(*req.PostId)
+		id, err := uuid.Parse(*req.PostID)
 		if err != nil {
 			return nil, fmt.Errorf("uuid.Parse: %w", err)
 		}
 
-		postId = &id
+		postID = &id
 	}
 
 	posts, err := r.cache.GetGlobal(ctx, cursor)
@@ -75,7 +74,7 @@ func (r *PostsService) GetGlobalPosts(ctx context.Context, id, cursor string) ([
 		return posts, nil
 	}
 
-	posts, err = r.repo.GetGlobalPosts(ctx, postId, req.CreatedAt)
+	posts, err = r.repo.GetGlobalPosts(ctx, postID, req.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("r.repo.GetGlobalPosts: %w", err)
 	}
@@ -95,10 +94,64 @@ func (r *PostsService) GetTopics(ctx context.Context) ([]models.Topics, error) {
 	return tpcs, nil
 }
 
-func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, id string) error {
+func (r *PostsService) GetTopicByID(ctx context.Context, id string) (*models.Topics, error) {
+	topic, err := r.repo.GetTopicsByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("r.repo.GetTopicsByID: %w", err)
+	}
+	return topic, nil
+}
+
+func (r *PostsService) CreateTopic(ctx context.Context, userID string, req *dto.CreateTopicDTO) error {
+	topic := models.Topics{
+		UserID: userID,
+		Title:  req.Title,
+	}
+
+	if err := r.repo.CreateTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("r.repo.CreateTopic: %w", err)
+	}
+
+	return nil
+}
+
+func (r *PostsService) DeleteTopic(ctx context.Context, strTopicID, userID string) error {
+	topicID, err := strconv.Atoi(strTopicID)
+	if err != nil {
+		return fmt.Errorf("strconv.Atoi: %w", err)
+	}
+	topic := models.Topics{
+		ID:     topicID,
+		UserID: userID,
+	}
+	if err := r.repo.DeleteTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("r.repo.DeleteTopic: %w", err)
+	}
+
+	return nil
+}
+
+func (r *PostsService) ReportTopic(ctx context.Context, userID, strTopicID string, req *dto.ReportTopicDTO) error {
+	topicID, err := strconv.Atoi(strTopicID)
+	if err != nil {
+		return fmt.Errorf("strconv.Atoi: %w", err)
+	}
+	topic := models.TopicsReport{
+		UserID:  userID,
+		TopicID: topicID,
+		Cause:   req.Cause,
+	}
+	if err := r.repo.ReportTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("r.repo.DeleteTopic: %w", err)
+	}
+
+	return nil
+}
+
+func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, userID string) error {
 	post := models.Post{
-		TopicId:     req.TopicId,
-		UserID:      id,
+		TopicID:     req.TopicID,
+		UserID:      userID,
 		ImageURL:    &req.ImageUrl,
 		Description: &req.Description,
 	}
@@ -109,13 +162,13 @@ func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, i
 	return nil
 }
 
-func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, id string) (*models.Post, error) {
+func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, postID, userID string) (*models.Post, error) {
 	post := models.Post{
-		ID:          req.PostId,
-		TopicId:     req.TopicId,
-		ImageURL:    &req.ImageUrl,
-		Description: &req.Description,
-		UserID:      id,
+		ID:          postID,
+		TopicID:     req.TopicID,
+		ImageURL:    req.ImageUrl,
+		Description: req.Description,
+		UserID:      userID,
 	}
 	res, err := r.repo.BuildUpdatePost(ctx, &post)
 	if err != nil {
@@ -124,8 +177,8 @@ func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, i
 	return res, nil
 }
 
-func (r *PostsService) GetPostById(ctx context.Context, postId string) (*models.FeedPost, error) {
-	post, err := r.repo.GetPostById(ctx, postId)
+func (r *PostsService) GetPostByID(ctx context.Context, postID string) (*models.FeedPost, error) {
+	post, err := r.repo.GetPostByID(ctx, postID)
 	if err != nil {
 		return nil, fmt.Errorf("r.repo.GetPostById: %w", err)
 	}
@@ -139,10 +192,10 @@ func (s *PostsService) ViewPost(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *PostsService) ReportPost(ctx context.Context, req *dto.ReportDTO, userId, postId string) error {
+func (s *PostsService) ReportPost(ctx context.Context, req *dto.ReportDTO, userID, postID string) error {
 	report := models.PostReport{
-		UserId: userId,
-		PostId: postId,
+		UserID: userID,
+		PostID: postID,
 		Cause:  req.Cause,
 	}
 
@@ -153,21 +206,21 @@ func (s *PostsService) ReportPost(ctx context.Context, req *dto.ReportDTO, userI
 	return nil
 }
 
-func (s *PostsService) DeletePost(ctx context.Context, postId string, userId string) error {
-	if err := s.repo.DeletePost(ctx, postId, userId); err != nil {
+func (s *PostsService) DeletePost(ctx context.Context, postID string, userID string) error {
+	if err := s.repo.DeletePost(ctx, postID, userID); err != nil {
 		return fmt.Errorf("s.repo.DeletePost: %w", err)
 	}
 	return nil
 }
 
-func (s *PostsService) LikePost(ctx context.Context, userId, postId string) error {
-	if err := s.repo.LikePost(ctx, userId, postId); err != nil {
+func (s *PostsService) LikePost(ctx context.Context, userID, postID string) error {
+	if err := s.repo.LikePost(ctx, userID, postID); err != nil {
 		return fmt.Errorf("s.repo.LikePost: %w", err)
 	}
 	return nil
 }
-func (s *PostsService) UnlikePost(ctx context.Context, userId, postId string) error {
-	if err := s.repo.UnlikePost(ctx, userId, postId); err != nil {
+func (s *PostsService) UnlikePost(ctx context.Context, userID, postID string) error {
+	if err := s.repo.UnlikePost(ctx, userID, postID); err != nil {
 		return fmt.Errorf("s.repo.UnlikePost: %w", err)
 	}
 	return nil

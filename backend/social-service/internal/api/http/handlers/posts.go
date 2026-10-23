@@ -8,7 +8,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -16,16 +15,16 @@ import (
 )
 
 var postsRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "auth_requests_total",
+	Name: "post_requests_total",
 	Help: "Total number of auth requests",
 })
 
 type PostHandler struct {
-	srvc   *services.PostsService
+	srvc   PostsService
 	logger *zap.Logger
 }
 
-func NewPostHandler(srvc *services.PostsService, logger *zap.Logger) *PostHandler {
+func NewPostHandler(srvc PostsService, logger *zap.Logger) *PostHandler {
 	return &PostHandler{srvc: srvc, logger: logger}
 }
 
@@ -71,13 +70,8 @@ func (h *PostHandler) GetSubPosts(c *gin.Context) {
 func (h *PostHandler) GetGlobalPosts(c *gin.Context) {
 	postsRequestsTotal.Inc()
 	cursor := c.Param("cursor")
-	id, err := middleware.GetUserID(c)
-	if err != nil {
-		response.Unauthorized(c, err, "failed get user id", h.logger)
-		return
-	}
 
-	posts, err := h.srvc.GetGlobalPosts(c.Request.Context(), id, cursor)
+	posts, err := h.srvc.GetGlobalPosts(c.Request.Context(), cursor)
 	if err != nil {
 		response.InternalServerError(c, err, "failed get global posts", h.logger)
 		return
@@ -100,7 +94,7 @@ func (h *PostHandler) GetByID(c *gin.Context) {
 	postsRequestsTotal.Inc()
 	postId := c.Param("post_id")
 
-	res, err := h.srvc.GetPostById(c.Request.Context(), postId)
+	res, err := h.srvc.GetPostByID(c.Request.Context(), postId)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			response.NotFound(c, err, "post not found", h.logger)
@@ -171,6 +165,139 @@ func (h *PostHandler) GetTopics(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetTopicByID godoc
+// @Summary      Получить топик по ID
+// @Tags         posts
+// @Accept       json
+// @Produce      json
+// @Param        topic_id  path      string  true  "ID топика"
+// @Success      200       {object}  models.Topics
+// @Failure      404       {object}  response.ErrorBody
+// @Failure      500       {object}  response.ErrorBody
+// @Router       /social/topics/{topic_id} [get]
+func (h *PostHandler) GetTopicByID(c *gin.Context) {
+	postsRequestsTotal.Inc()
+
+	topicId := c.Param("topic_id")
+
+	res, err := h.srvc.GetTopicByID(c.Request.Context(), topicId)
+	if err != nil {
+		response.InternalServerError(c, err, "failed get topic by id", h.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+// CreateTopic godoc
+// @Summary      Создать топик
+// @Tags         posts
+// @Accept       json
+// @Produce      json
+// @Param        request  body      dto.CreateTopicDTO  true  "Данные для создания топика"
+// @Success      201
+// @Failure      400  {object}  response.ErrorBody
+// @Failure      401  {object}  response.ErrorBody
+// @Failure      500  {object}  response.ErrorBody
+// @Security     BearerAuth
+// @Router       /social/topics [post]
+func (h *PostHandler) CreateTopic(c *gin.Context) {
+	postsRequestsTotal.Inc()
+
+	var req dto.CreateTopicDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	if err := h.srvc.CreateTopic(c.Request.Context(), id, &req); err != nil {
+		response.InternalServerError(c, err, "failed create topic", h.logger)
+		return
+	}
+
+	c.Status(http.StatusCreated)
+}
+
+// DeleteTopic godoc
+// @Summary      Удалить топик
+// @Tags         posts
+// @Accept       json
+// @Produce      json
+// @Param        topic_id  path  string  true  "ID топика"
+// @Success      204
+// @Failure      401  {object}  response.ErrorBody
+// @Failure      404  {object}  response.ErrorBody
+// @Failure      500  {object}  response.ErrorBody
+// @Security     BearerAuth
+// @Router       /social/topics/{topic_id} [delete]
+func (h *PostHandler) DeleteTopic(c *gin.Context) {
+	postsRequestsTotal.Inc()
+
+	topicId := c.Param("topic_id")
+
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	if err := h.srvc.DeleteTopic(c.Request.Context(), topicId, id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "topic not found", h.logger)
+			return
+		}
+
+		response.InternalServerError(c, err, "failed delete topic", h.logger)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// ReportTopic godoc
+// @Summary      Пожаловаться на топик
+// @Tags         posts
+// @Accept       json
+// @Produce      json
+// @Param        topic_id  path  string               true  "ID топика"
+// @Param        request   body  dto.ReportTopicDTO   true  "Данные жалобы"
+// @Success      201
+// @Failure      400  {object}  response.ErrorBody
+// @Failure      401  {object}  response.ErrorBody
+// @Failure      500  {object}  response.ErrorBody
+// @Security     BearerAuth
+// @Router       /social/topics/{topic_id}/report [post]
+func (h *PostHandler) ReportTopic(c *gin.Context) {
+	postsRequestsTotal.Inc()
+
+	var req dto.ReportTopicDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
+	topicId := c.Param("topic_id")
+
+	id, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+
+	if err := h.srvc.ReportTopic(c.Request.Context(), id, topicId, &req); err != nil {
+		response.InternalServerError(c, err, "failed report topic", h.logger)
+		return
+	}
+
+	c.Status(http.StatusCreated)
+}
+
 // Update godoc
 // @Summary      Обновить пост
 // @Tags         posts
@@ -186,7 +313,8 @@ func (h *PostHandler) GetTopics(c *gin.Context) {
 // @Router       /social/posts/{post_id} [patch]
 func (h *PostHandler) Update(c *gin.Context) {
 	postsRequestsTotal.Inc()
-	id, err := middleware.GetUserID(c)
+	postID := c.Param("post_id")
+	userID, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
 		return
@@ -198,7 +326,7 @@ func (h *PostHandler) Update(c *gin.Context) {
 		return
 	}
 
-	res, err := h.srvc.UpdatePost(c.Request.Context(), &req, id)
+	res, err := h.srvc.UpdatePost(c.Request.Context(), &req, postID, userID)
 	if err != nil {
 		response.InternalServerError(c, err, "failed update post by id", h.logger)
 		return

@@ -9,6 +9,7 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/config"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/http/handlers"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/api/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -22,15 +23,17 @@ const (
 type Server struct {
 	engine *gin.Engine
 	server *http.Server
+	ws     *ws.WebSockerHandlers
 	h      *handlers.Handlers
 	m      *middleware.Middleware
 }
 
-func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers) *Server {
+func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers, ws *ws.WebSockerHandlers) *Server {
 	engine := gin.New()
 	return &Server{
 		h:      h,
 		m:      m,
+		ws:     ws,
 		engine: engine,
 		server: &http.Server{
 			Addr:        ":" + cfg.Port,
@@ -42,14 +45,12 @@ func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Hand
 
 func (s *Server) Run() error {
 	s.engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
+	s.engine.GET("/metrics", s.m.RequireRole(), gin.WrapH(promhttp.Handler()))
 	api := s.engine.Group("/api/v1")
 	social := api.Group("/social")
 	social.Use(s.m.AuthMiddleware())
 	social.Use(s.m.RateLimiter())
 	{
-		social.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
 		social.GET("/profile/me", s.h.Profile.Me)
 		social.GET("/profile/:user_id", s.h.Profile.GetProfileByID)
 		social.PATCH("/profile", s.h.Profile.UpdateProfile)
@@ -58,6 +59,7 @@ func (s *Server) Run() error {
 		social.POST("/profile/:user_id/subscribe", s.h.Profile.Subscribe)
 		social.DELETE("/profile/:user_id/unsubscribe", s.h.Profile.Unsubscribe)
 		social.POST("/profile/:user_id/report", s.h.Profile.Report)
+		social.POST("/profile/:user_id/block", s.h.Profile.Block)
 
 		social.GET("/posts", s.h.Posts.GetSubPosts)
 		social.GET("/posts/global", s.h.Posts.GetGlobalPosts)
@@ -80,6 +82,50 @@ func (s *Server) Run() error {
 		social.DELETE("/posts/:post_id/comments/:comment_id/like", s.h.Comments.Unlike)
 
 		social.GET("/topics", s.h.Posts.GetTopics)
+		social.GET("/topics/:topic_id", s.h.Posts.GetTopicByID)
+		social.POST("/topics", s.h.Posts.CreateTopic)
+		social.DELETE("/topics/:topic_id", s.h.Posts.DeleteTopic)
+		social.POST("/topics/report", s.h.Posts.ReportTopic)
+
+		social.POST("/chats", s.h.Chats.CreateGroup)
+		social.POST("/chats/directs/:user_id", s.h.Chats.CreateDirect)
+		social.GET("/chats/list", s.h.Chats.GetChatList)
+		social.POST("/chats/:chat_id/read", s.h.Chats.MarkAsRead)
+		social.GET("/chats/:chat_id", s.h.Chats.GetChatByID)
+		social.DELETE("/chats/:chat_id", s.h.Chats.DeleteChat)
+		social.PATCH("/chats/:chat_id", s.h.Chats.UpdateChat)
+
+		social.POST("/chats/:chat_id/leave", s.h.Chats.LeaveChat)
+
+		social.GET("/chats/:chat_id/members", s.h.Chats.GetUsersFromChat)
+		social.POST("/chats/:chat_id/members", s.h.Chats.JoinInChat)
+		social.DELETE("/chats/:chat_id/members/:user_id", s.h.Chats.KickUserFromChat)
+		social.PATCH("/chats/:chat_id/members/:user_id/role", s.h.Chats.SetUserRoleChat)
+
+		social.POST("/chats/:chat_id/bans/:user_id", s.h.Chats.BanUser)
+		social.DELETE("/chats/:chat_id/bans/:user_id", s.h.Chats.UnbanUser)
+		social.GET("/chats/:chat_id/bans/:user_id", s.h.Chats.CheckBanUser)
+
+		social.GET("/message/chat/:chat_id", s.ws.Msgs.GetChatHistory)
+		social.GET("/message/stream/:video_id", s.ws.Strms.GetStreamHistory)
+
+		social.GET("/youtube/connect", s.h.Stream.GoogleLogin)
+		social.GET("/youtube/callback", s.h.Stream.GoogleCallback)
+		social.GET("/youtube/channel", s.h.Stream.GetChannel)
+
+		social.POST("/streams", s.h.Stream.SaveStream)
+		social.GET("/streams/list", s.h.Stream.GetCursorStreams)
+		social.GET("/streams/:video_id", s.h.Stream.GetStream)
+		social.DELETE("/streams/:video_id", s.h.Stream.DeleteStream)
+		social.PATCH("/streams/:video_id", s.h.Stream.BuildUpdateStream)
+
+		social.GET("/ws/connect", s.ws.Msgs.Connect)
+
+		social.GET("/ws/message/group/:chat_id", s.ws.Msgs.SendMessageGroup)
+		social.GET("/ws/message/direct/:chat_id", s.ws.Msgs.SendMessageDirect)
+		social.GET("/ws/message/stream/:video_id", s.ws.Strms.SendStreamMessage)
+
+		social.GET("/search")
 	}
 
 	return s.server.ListenAndServe()

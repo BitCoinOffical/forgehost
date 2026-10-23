@@ -1,12 +1,12 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 	"context"
-	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain/models"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -25,7 +25,7 @@ func NewUserStore(rdb *redis.Client) *UserStore {
 }
 
 func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.UserStored) error {
-	key := fmt.Sprintf("%s%s", pendingKey, randStr)
+	key := pendingKey + randStr
 	pipe := s.rdb.Pipeline()
 	if err := pipe.HSet(ctx, key, user).Err(); err != nil {
 		return fmt.Errorf("s.rdb.HSet: %w", err)
@@ -39,14 +39,19 @@ func (s *UserStore) SaveUser(ctx context.Context, randStr string, user *models.U
 }
 
 func (s *UserStore) GetUser(ctx context.Context, randStr string) (*models.UserStored, error) {
-	key := fmt.Sprintf("%s%s", pendingKey, randStr)
-	var user models.UserStored
-	err := s.rdb.HGetAll(ctx, key).Scan(&user)
+	key := pendingKey + randStr
+	cmd := s.rdb.HGetAll(ctx, key)
+	res, err := cmd.Result()
 	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return nil, fmt.Errorf("s.rdb.HGetAll: %w", domain.ErrNotFound)
-		}
 		return nil, fmt.Errorf("s.rdb.HGetAll: %w", err)
+	}
+	if len(res) == 0 {
+		return nil, fmt.Errorf("s.rdb.HGetAll: %w", domain.ErrNotFound)
+	}
+
+	var user models.UserStored
+	if err := cmd.Scan(&user); err != nil {
+		return nil, fmt.Errorf("cmd.Scan: %w", err)
 	}
 	return &user, nil
 }

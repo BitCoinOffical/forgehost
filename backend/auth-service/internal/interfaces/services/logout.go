@@ -8,7 +8,19 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *AuthService) LogoutUser(ctx context.Context, userID string) error {
+type LogoutService struct {
+	sessionStore SessionStore
+	logger       *zap.Logger
+}
+
+func NewLogoutService(sessionStore SessionStore, logger *zap.Logger) *LogoutService {
+	return &LogoutService{
+		sessionStore: sessionStore,
+		logger:       logger,
+	}
+}
+
+func (s *LogoutService) LogoutUser(ctx context.Context, userID string) error {
 	id, err := uuid.Parse(userID)
 	if err != nil {
 		return fmt.Errorf("uuid.Parse: %w", err)

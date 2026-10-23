@@ -8,7 +8,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -16,16 +15,16 @@ import (
 )
 
 var profRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
-	Name: "auth_requests_total",
+	Name: "prof_requests_total",
 	Help: "Total number of auth requests",
 })
 
 type ProfileHandler struct {
-	srvc   *services.ProfileService
+	srvc   ProfileService
 	logger *zap.Logger
 }
 
-func NewProfileHandler(srvc *services.ProfileService, logger *zap.Logger) *ProfileHandler {
+func NewProfileHandler(srvc ProfileService, logger *zap.Logger) *ProfileHandler {
 	return &ProfileHandler{srvc: srvc, logger: logger}
 }
 
@@ -258,4 +257,21 @@ func (h *ProfileHandler) Report(c *gin.Context) {
 	}
 
 	c.Status(http.StatusCreated)
+}
+
+func (h *ProfileHandler) Block(c *gin.Context) {
+	profRequestsTotal.Inc()
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		response.Unauthorized(c, err, "failed get user id", h.logger)
+		return
+	}
+	targetID := c.Param("user_id")
+
+	if err := h.srvc.Block(c.Request.Context(), userID, targetID); err != nil {
+		response.InternalServerError(c, err, "failed block user", h.logger)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }

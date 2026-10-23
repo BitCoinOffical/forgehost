@@ -2,6 +2,8 @@ package rabbitmq
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"sync"
 	"time"
 
@@ -38,10 +40,16 @@ type RabbitURL struct {
 }
 
 func NewResilientConnection(cfg *RabbitURL, logger *zap.Logger) *ResilientConnection {
-	url := fmt.Sprintf("amqp://%s:%s@%s:%s/", cfg.User, cfg.Pass, cfg.Host, cfg.Port)
+	u := url.URL{
+		Scheme: "amqp",
+		User:   url.UserPassword(cfg.User, cfg.Pass),
+		Host:   net.JoinHostPort(cfg.Host, cfg.Port),
+	}
+
+	connString := u.String()
 
 	rc := &ResilientConnection{
-		url:            url,
+		url:            connString,
 		done:           make(chan struct{}),
 		reconnectDelay: time.Second,
 		maxReconnect:   maxReconnect,
@@ -94,19 +102,19 @@ func (rc *ResilientConnection) Reconnect() {
 func (rc *ResilientConnection) connect() (*amqp.Connection, error) {
 	conn, err := amqp.Dial(rc.url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("amqp.Dial: %w", err)
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
 		conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("conn.Channel: %w", err)
 	}
 
 	if err := ch.Confirm(false); err != nil {
 		ch.Close()
 		conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("ch.Confirm: %w", err)
 	}
 
 	rc.notifyClose = make(chan *amqp.Error, 1)

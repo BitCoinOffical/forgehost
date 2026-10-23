@@ -11,19 +11,26 @@ import (
 	_ "github.com/BitCoinOffical/forgehost/social-service/docs"
 	kafkaread "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/kafka"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/migrations"
+	mongodb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/mongo"
 	postgresdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/postgres"
 	redisdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/redis"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/http/handlers"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/api/ws"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/consumers"
 	jwtpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/jwt"
 	loggerpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/logger"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	yt "google.golang.org/api/youtube/v3"
 )
 
 const (
-	logPath = "logs/social.log"
+	logPath                 = "logs/social.log"
+	mongoMessagerDataBase   = "chat"
+	mongoMessagerCollection = "messages"
 )
 
 // @title Social Service API
@@ -101,6 +108,15 @@ func main() {
 	}
 	logger.Info("redis for rate limitter applied successfully")
 
+	mongo, err := mongodb.NewMongoConnect(&mongodb.MongoConfig{
+		MongoHost: cfg.Mongo.MongoHost,
+		MongoPort: cfg.Mongo.MongoPort,
+	}, mongoMessagerDataBase, mongoMessagerCollection)
+	if err != nil {
+		logger.Fatal("mongo failed", zap.Error(err))
+	}
+	logger.Info("mongo applied successfully")
+
 	srv := consumers.NewServices(pool)
 	cons := consumers.NewConsumers(srv, client, logger)
 
@@ -112,15 +128,26 @@ func main() {
 	}()
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
-	m := middleware.NewMiddleware(rate, logger, manager)
-	s := handlers.NewServices(pool, cache)
-	h := handlers.NewHandlers(s, logger)
+	mdlwr := middleware.NewMiddleware(rate, logger, manager)
+	srvcs := handlers.NewServices(pool, cache)
+	handlrs := handlers.NewHandlers(srvcs, logger, &oauth2.Config{
+		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
+		ClientID:     cfg.WebGoogle.WebClientID,
+		ClientSecret: cfg.WebGoogle.WebClientSecret,
+		Scopes: []string{
+			yt.YoutubeReadonlyScope,
+		},
+		Endpoint: google.Endpoint,
+	})
+
+	wsSrvc := ws.NewWebSockerServices(mongo, cache, pool, logger)
+	ws := ws.NewWebSockerHandlers(wsSrvc, logger)
 
 	serv := api.NewServer(&config.AppConfig{
 		DebugLevel: cfg.App.DebugLevel,
 		Port:       cfg.App.Port,
 		Secret:     cfg.App.Secret,
-	}, m, h)
+	}, mdlwr, handlrs, ws)
 
 	go func() {
 		if err := serv.Run(); err != nil {

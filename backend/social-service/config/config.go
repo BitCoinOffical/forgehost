@@ -14,16 +14,22 @@ const (
 type Env string
 
 type Config struct {
-	Postgres PostgresConfig
-	Kafka    KafkaConfig
-	Redis    RedisConfig
-	App      AppConfig
+	WebGoogle WebGoogleConfig
+	Postgres  PostgresConfig
+	Kafka     KafkaConfig
+	Redis     RedisConfig
+	Mongo     MongoConfig
+	App       AppConfig
 }
 
 type KafkaConfig struct {
 	Addr string `env:"KAFKA_ADDR,required"`
 }
-
+type WebGoogleConfig struct {
+	WebClientID     string `env:"WEB_GOOGLE_CLIENT_ID,required"`
+	WebClientSecret string `env:"WEB_GOOGLE_CLIENT_SECRET,required"`
+	WebRedirectURL  string `env:"WEB_GOOGLE_REDIRECT_URL,required"`
+}
 type PostgresConfig struct {
 	DBUser     string `env:"DB_USER,required"`
 	DBPassword string `env:"DB_PASSWORD,required"`
@@ -44,6 +50,11 @@ type RedisConfig struct {
 	RDBPass string `env:"RDB_PASS,required"`
 }
 
+type MongoConfig struct {
+	MongoHost string `env:"MONGO_HOST,required"`
+	MongoPort string `env:"MONGO_PORT,required"`
+}
+
 type AppConfig struct {
 	DebugLevel string `env:"DEBUG_LEVEL,required"`
 	Secret     string `env:"JWT_SECRET,required"`
@@ -61,11 +72,19 @@ func NewLoad() (*Config, error) {
 		return nil, err
 	}
 
+	if err := env.Parse(&cfg.WebGoogle); err != nil {
+		return nil, err
+	}
+
 	if err := env.Parse(&cfg.Postgres); err != nil {
 		return nil, err
 	}
 
 	if err := env.Parse(&cfg.Redis); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Mongo); err != nil {
 		return nil, err
 	}
 

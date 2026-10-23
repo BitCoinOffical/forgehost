@@ -1,11 +1,12 @@
 package store
 
 import (
-	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 	"context"
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/BitCoinOffical/forgehost/auth-service/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -23,28 +24,28 @@ func NewSessionStore(rdb *redis.Client) *SessionStore {
 	return &SessionStore{rdb: rdb}
 }
 
-func (s *SessionStore) SaveToken(ctx context.Context, id uuid.UUID, value string, RefreshTTL time.Duration) error {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
-	if err := s.rdb.Set(ctx, key, value, RefreshTTL).Err(); err != nil {
+func (s *SessionStore) SaveToken(ctx context.Context, userID uuid.UUID, token string, RefreshTTL time.Duration) error {
+	key := tokenKey + userID.String()
+	if err := s.rdb.Set(ctx, key, token, RefreshTTL).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Set: %w", err)
 	}
 	return nil
 }
 
-func (s *SessionStore) GetToken(ctx context.Context, id uuid.UUID) (string, error) {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
-	value, err := s.rdb.Get(ctx, key).Result()
+func (s *SessionStore) GetToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	key := tokenKey + userID.String()
+	token, err := s.rdb.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return "", fmt.Errorf("s.rdb.Get: %w", domain.ErrNotFound)
 		}
 		return "", fmt.Errorf("s.rdb.Get: %w", err)
 	}
-	return value, nil
+	return token, nil
 }
 
-func (s *SessionStore) DeleteToken(ctx context.Context, id uuid.UUID) error {
-	key := fmt.Sprintf("%s%s", tokenKey, id.String())
+func (s *SessionStore) DeleteToken(ctx context.Context, userID uuid.UUID) error {
+	key := tokenKey + userID.String()
 	if err := s.rdb.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("s.rdb.Del: %w", err)
 	}

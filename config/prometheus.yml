@@ -12,7 +12,7 @@ scrape_configs:
   - job_name: 'backend'
     scrape_interval: 5s
     static_configs:
-      - targets: ['auth-service:8081', 'auth-worker:8082', 'social-service:8083', 'notification-service:8084']
+      - targets: ['auth-service:8081', 'social-service:8084']
         labels:
           group: 'services'
 

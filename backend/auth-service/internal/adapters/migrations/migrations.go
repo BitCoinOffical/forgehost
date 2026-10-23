@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"fmt"
 
@@ -27,14 +26,16 @@ func RunMigrations(pool *pgxpool.Pool) error {
 
 	db := stdlib.OpenDBFromPool(pool)
 	if err := goose.Up(db, "sql"); err != nil {
-		return err
+		return fmt.Errorf("goose.Up: %w", err)
 	}
 	return nil
 }
 
-func RollbackLast(ctx context.Context, db *sql.DB) error {
+func RollbackLast(ctx context.Context, pool *pgxpool.Pool) error {
+	db := stdlib.OpenDBFromPool(pool)
+	defer db.Close()
 	if err := goose.DownContext(ctx, db, "sql"); err != nil {
-		return err
+		return fmt.Errorf("goose.DownContext: %w", err)
 	}
 	return nil
 }
