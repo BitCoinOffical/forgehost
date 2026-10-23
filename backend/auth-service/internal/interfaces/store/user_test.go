@@ -33,12 +33,17 @@ func TestSaveUser(t *testing.T) {
 			err := store.SaveUser(context.Background(), tc.randStr, tc.user)
 			if tc.success {
 				require.NoError(t, err)
+
+				user, err := store.GetUser(context.Background(), tc.randStr)
+				require.NoError(t, err)
+				assert.Equal(t, tc.user, user)
 			} else {
 				require.Error(t, err)
 			}
 		})
 	}
 }
+
 func TestGetUser(t *testing.T) {
 	client := setupTestDB(t)
 	store := NewUserStore(client)
