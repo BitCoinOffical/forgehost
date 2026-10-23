@@ -108,12 +108,12 @@ ORDER BY ps.created_at DESC LIMIT 10;
 		if err := rows.Scan(
 			&fd.Username,
 			&fd.AvatarURL,
-			&fd.ImageURL,
-			&fd.Description,
 			&fd.PostID,
 			&fd.TopicID,
 			&fd.TopicName,
 			&fd.UserID,
+			&fd.ImageURL,
+			&fd.Description,
 			&fd.Views,
 			&fd.LikeCount,
 		); err != nil {
@@ -137,7 +137,8 @@ ps.topic_id,
 ps.user_id,
 ps.image_url,
 ps.description,
-ps.views
+ps.views,
+(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
 FROM target_topics_ids tt 
 JOIN posts ps ON ps.topic_id = tt.target_topic_id AND ps.is_delete = false AND ps.created_at >= NOW() - INTERVAL '7 days'
 JOIN profiles p ON ps.user_id = p.user_id
@@ -153,12 +154,12 @@ ORDER BY ps.created_at DESC LIMIT 10;
 		if err := rows.Scan(
 			&fd.Username,
 			&fd.AvatarURL,
-			&fd.ImageURL,
-			&fd.Description,
 			&fd.PostID,
 			&fd.TopicID,
 			&fd.TopicName,
 			&fd.UserID,
+			&fd.ImageURL,
+			&fd.Description,
 			&fd.Views,
 			&fd.LikeCount,
 		); err != nil {
@@ -184,7 +185,7 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context, postId *uuid.UUID, creat
 			ps.views,
 			(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count,
 			(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title
-			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id 
+			FROM posts ps JOIN profiles p ON ps.user_id = p.user_id AND ps.is_delete = false
 			WHERE (
 			($1::timestamptz IS NULL AND $2::uuid IS NULL)
 			OR 
@@ -232,7 +233,14 @@ func (r *PostsRepo) GetTopics(ctx context.Context) ([]models.Topics, error) {
 	var tpcs []models.Topics
 	for rows.Next() {
 		var tpc models.Topics
-		if err := rows.Scan(&tpc.ID, &tpc.Title, &tpc.UserID, &tpc.IsDeleted, &tpc.CreatedAt, &tpc.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&tpc.ID,
+			&tpc.UserID,
+			&tpc.Title,
+			&tpc.IsDeleted,
+			&tpc.CreatedAt,
+			&tpc.UpdatedAt,
+		); err != nil {
 			return nil, fmt.Errorf("rows.Scan: %w", err)
 		}
 		tpcs = append(tpcs, tpc)
@@ -273,7 +281,7 @@ func (r *PostsRepo) CreateTopic(ctx context.Context, topic *models.Topics) error
 }
 
 func (r *PostsRepo) DeleteTopic(ctx context.Context, topic *models.Topics) error {
-	sql := `UPDATE FROM topics SET is_delete = true WHERE id = $1 AND user_id = $2`
+	sql := `UPDATE topics SET is_delete = true WHERE id = $1 AND user_id = $2`
 
 	tag, err := r.pool.Exec(ctx, sql, topic.ID, topic.UserID)
 	if err != nil {
@@ -289,7 +297,7 @@ func (r *PostsRepo) DeleteTopic(ctx context.Context, topic *models.Topics) error
 
 func (r *PostsRepo) ReportTopic(ctx context.Context, topic *models.TopicsReport) error {
 	sql := `INSERT INTO topic_reports (user_id, topic_id, cause) VALUES ($1, $2, $3)`
-	_, err := r.pool.Exec(ctx, sql, topic.ID, topic.UserID, topic.Cause)
+	_, err := r.pool.Exec(ctx, sql, topic.UserID, topic.TopicID, topic.Cause)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
@@ -316,7 +324,7 @@ func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
 
 func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*models.Post, error) {
 	builder := squirrel.Update("posts").
-		Where(squirrel.Eq{"id": post.ID}, squirrel.Eq{"user_id": post.UserID}).
+		Where(squirrel.Eq{"id": post.ID, "user_id": post.UserID}).
 		Set("updated_at", squirrel.Expr("NOW()"))
 
 	if post.ImageURL != nil {
