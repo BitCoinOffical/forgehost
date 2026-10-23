@@ -6,6 +6,7 @@ import (
 	v2 "encoding/json/v2"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
@@ -114,7 +115,11 @@ func (r *PostsService) CreateTopic(ctx context.Context, userID string, req *dto.
 	return nil
 }
 
-func (r *PostsService) DeleteTopic(ctx context.Context, topicID, userID string) error {
+func (r *PostsService) DeleteTopic(ctx context.Context, strTopicID, userID string) error {
+	topicID, err := strconv.Atoi(strTopicID)
+	if err != nil {
+		return fmt.Errorf("strconv.Atoi: %w", err)
+	}
 	topic := models.Topics{
 		ID:     topicID,
 		UserID: userID,
@@ -126,7 +131,11 @@ func (r *PostsService) DeleteTopic(ctx context.Context, topicID, userID string) 
 	return nil
 }
 
-func (r *PostsService) ReportTopic(ctx context.Context, userID, topicID string, req *dto.ReportTopicDTO) error {
+func (r *PostsService) ReportTopic(ctx context.Context, userID, strTopicID string, req *dto.ReportTopicDTO) error {
+	topicID, err := strconv.Atoi(strTopicID)
+	if err != nil {
+		return fmt.Errorf("strconv.Atoi: %w", err)
+	}
 	topic := models.TopicsReport{
 		UserID:  userID,
 		TopicID: topicID,
