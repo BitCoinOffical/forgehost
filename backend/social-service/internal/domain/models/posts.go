@@ -34,7 +34,7 @@ type Post struct {
 }
 
 type Topics struct {
-	ID        string    `db:"id"`
+	ID        int       `db:"id"`
 	UserID    string    `db:"user_id"`
 	Title     string    `db:"title"`
 	IsDeleted bool      `db:"is_delete"`
@@ -45,7 +45,7 @@ type Topics struct {
 type TopicsReport struct {
 	ID        string    `db:"id"`
 	UserID    string    `db:"user_id"`
-	TopicID   string    `db:"topic_id"`
+	TopicID   int       `db:"topic_id"`
 	Cause     string    `db:"cause"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
