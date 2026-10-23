@@ -24,9 +24,16 @@ func NewStreamRepo(pool *pgxpool.Pool) *StreamRepo {
 
 func (r *StreamRepo) SaveChannel(ctx context.Context, channelID, userID string) error {
 	sql := `UPDATE profiles SET channel_id = $1 WHERE user_id = $2`
-	_, err := r.pool.Exec(ctx, sql, channelID, userID)
+	tag, err := r.pool.Exec(ctx, sql, channelID, userID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
+			return fmt.Errorf("channel already linked: %w", domain.ErrAlreadyExists)
+		}
 		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -127,14 +134,11 @@ func (r *StreamRepo) DeleteStream(ctx context.Context, videoID, userID string) e
 }
 
 func (r *StreamRepo) DeleteComplatedStreams(ctx context.Context) error {
-	sql := `DELETE FROM streams WHERE stream_status = 'complete'`
+	sql := `DELETE FROM streams WHERE status = 'complete'`
 
-	tag, err := r.pool.Exec(ctx, sql)
+	_, err := r.pool.Exec(ctx, sql)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return domain.ErrStreamNotFound
 	}
 	return nil
 }
