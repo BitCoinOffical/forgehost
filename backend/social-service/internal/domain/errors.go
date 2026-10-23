@@ -14,6 +14,9 @@ var ErrEmptyValue = errors.New("value is empty")
 var ErrForbidden = errors.New("insufficient privileges")
 var ErrCannotKickOwner = errors.New("cannot kick owner")
 var ErrUserOffline = errors.New("user offline")
+var ErrSubscribeToSelf = errors.New("cannot subscribe to yourself")
+var ErrReportToSelf = errors.New("cannot report to yourself")
+var ErrBlockToSelf = errors.New("cannot block to yourself")
 
 // resend
 var ErrToManyRequest = errors.New("to many request")
