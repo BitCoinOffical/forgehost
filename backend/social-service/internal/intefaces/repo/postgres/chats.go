@@ -115,13 +115,14 @@ func (r *ChatsRepo) LeaveChat(ctx context.Context, chatID, userID string) error 
 	}
 
 	if role == "owner" {
-		_, err := tx.Exec(ctx, `DELETE FROM chats WHERE id = $1`, chatID)
-		if err != nil {
+		if _, err := tx.Exec(ctx, `DELETE FROM chats WHERE id = $1`, chatID); err != nil {
 			return fmt.Errorf("tx.Exec: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("tx.Commit: %w", err)
 		}
 		return nil
 	}
-
 	sql := `DELETE FROM chat_members WHERE chat_id = $1 AND user_id = $2`
 	tag, err := tx.Exec(ctx, sql, chatID, userID)
 	if err != nil {
@@ -130,7 +131,9 @@ func (r *ChatsRepo) LeaveChat(ctx context.Context, chatID, userID string) error 
 	if tag.RowsAffected() == 0 {
 		return domain.ErrNotFound
 	}
-
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("tx.Commit: %w", err)
+	}
 	return nil
 }
 
@@ -155,7 +158,7 @@ func (r *ChatsRepo) BuildUpdateChat(ctx context.Context, chatID, userID string, 
 	}
 
 	builder := squirrel.Update("chats").
-		Where(squirrel.Eq{"chat_id": chatID}, squirrel.Eq{"owner_id": userID}).
+		Where(squirrel.Eq{"id": chatID, "owner_id": userID}).
 		Set("updated_at", squirrel.Expr("NOW()"))
 
 	if chat.Title != nil {
@@ -374,7 +377,7 @@ func (r *ChatsRepo) UnbanUser(ctx context.Context, chatID, targetID, userID stri
 		return domain.ErrForbidden
 	}
 
-	_, err = r.pool.Exec(ctx, `DELETE FROM chat_bans WHERE chat_id = $1 AND user_id = $2`, chatID, targetID, userID)
+	_, err = r.pool.Exec(ctx, `DELETE FROM chat_bans WHERE chat_id = $1 AND user_id = $2`, chatID, targetID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
