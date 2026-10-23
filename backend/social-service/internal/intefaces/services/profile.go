@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 )
@@ -69,29 +70,35 @@ func (s *ProfileService) GetSubscribers(ctx context.Context, id string) ([]model
 	return subscr, nil
 }
 
-func (s *ProfileService) Subscribe(ctx context.Context, userId, targetId string) error {
-	if err := s.repo.Subscribe(ctx, userId, targetId); err != nil {
+func (s *ProfileService) Subscribe(ctx context.Context, userID, targetID string) error {
+	if userID == targetID {
+		return domain.ErrSubscribeToSelf
+	}
+	if err := s.repo.Subscribe(ctx, userID, targetID); err != nil {
 		return fmt.Errorf("s.repo.Subscribe: %w", err)
 	}
 	return nil
 }
 
-func (s *ProfileService) UnSubscribe(ctx context.Context, userId, targetId string) error {
-	if err := s.repo.UnSubscribe(ctx, userId, targetId); err != nil {
+func (s *ProfileService) UnSubscribe(ctx context.Context, userID, targetID string) error {
+	if err := s.repo.UnSubscribe(ctx, userID, targetID); err != nil {
 		return fmt.Errorf("s.repo.UnSubscribe: %w", err)
 	}
 	return nil
 }
 
-func (r *ProfileService) Report(ctx context.Context, userId, targetId string, req *dto.ReportDTO) error {
-	if err := r.repo.CreateProfileReport(ctx, userId, targetId, req.Cause); err != nil {
+func (r *ProfileService) Report(ctx context.Context, userID, targetID string, req *dto.ReportDTO) error {
+	if userID == targetID {
+		return domain.ErrSubscribeToSelf
+	}
+	if err := r.repo.CreateProfileReport(ctx, userID, targetID, req.Cause); err != nil {
 		return fmt.Errorf("r.repo.CreateProfileReport: %w", err)
 	}
 	return nil
 }
 
-func (r *ProfileService) Block(ctx context.Context, userId, targetId string) error {
-	if err := r.repo.Block(ctx, userId, targetId); err != nil {
+func (r *ProfileService) Block(ctx context.Context, userID, targetID string) error {
+	if err := r.repo.Block(ctx, userID, targetID); err != nil {
 		return fmt.Errorf("r.repo.Block: %w", err)
 	}
 	return nil
