@@ -25,7 +25,7 @@ func (r *CommentsRepo) ListComments(ctx context.Context, postId string) ([]model
 	c.parent_id, 
 	c.body, 
 	c.created_at,
-	(SELECT COUNT(*) FROM comment_likes WHERE post_id = c.id) AS likes,
+	(SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) AS likes,
 	(SELECT COUNT(*) FROM comments WHERE parent_id = c.id) AS count_comments
 	FROM comments c WHERE c.post_id = $1`
 	rows, err := r.pool.Query(ctx, sql, postId)
