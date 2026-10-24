@@ -154,6 +154,7 @@ func (h *StreamHandler) SaveStream(c *gin.Context) {
 }
 
 func (h *StreamHandler) BuildUpdateStream(c *gin.Context) {
+	videoID := c.Param("video_id")
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
@@ -166,7 +167,7 @@ func (h *StreamHandler) BuildUpdateStream(c *gin.Context) {
 		return
 	}
 
-	stream, err := h.srvc.BuildUpdateStream(c.Request.Context(), userID, &req)
+	stream, err := h.srvc.BuildUpdateStream(c.Request.Context(), userID, videoID, &req)
 	if err != nil {
 		response.InternalServerError(c, err, "failed update stream", h.logger)
 		return
