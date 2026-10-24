@@ -92,9 +92,10 @@ func (s *StreamService) SaveStream(ctx context.Context, userID string, req *dto.
 	return streamID, nil
 }
 
-func (s *StreamService) BuildUpdateStream(ctx context.Context, userID string, req *dto.UpdateStreamDTO) (*models.Stream, error) {
+func (s *StreamService) BuildUpdateStream(ctx context.Context, userID, videoID string, req *dto.UpdateStreamDTO) (*models.Stream, error) {
 	stream := models.Stream{
 		UserID:   userID,
+		VideoID:  videoID,
 		Title:    req.Title,
 		Status:   req.Status,
 		EmbedURL: req.EmbedURL,
@@ -138,7 +139,7 @@ func (s *StreamService) GetCursorStreams(ctx context.Context, cursor string) ([]
 			return nil, fmt.Errorf("base64.URLEncoding.DecodeString: %w", err)
 		}
 
-		if err := v2.Unmarshal(decoded, req); err != nil {
+		if err := v2.Unmarshal(decoded, &req); err != nil {
 			return nil, fmt.Errorf("v2.Unmarshal: %w", err)
 		}
 
