@@ -17,6 +17,7 @@ var ErrUserOffline = errors.New("user offline")
 var ErrSubscribeToSelf = errors.New("cannot subscribe to yourself")
 var ErrReportToSelf = errors.New("cannot report to yourself")
 var ErrBlockToSelf = errors.New("cannot block to yourself")
+var ErrInvalidCursor = errors.New("invalid cursor")
 
 // resend
 var ErrToManyRequest = errors.New("to many request")
