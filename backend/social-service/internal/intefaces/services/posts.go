@@ -54,8 +54,12 @@ func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]mod
 			return nil, fmt.Errorf("base64.URLEncoding.DecodeString: %w", err)
 		}
 
-		if err := v2.Unmarshal(decoded, req); err != nil {
+		if err := v2.Unmarshal(decoded, &req); err != nil {
 			return nil, fmt.Errorf("v2.Unmarshal: %w", err)
+		}
+
+		if req.PostID == nil || *req.PostID == "" {
+			return nil, domain.ErrInvalidCursor
 		}
 
 		id, err := uuid.Parse(*req.PostID)

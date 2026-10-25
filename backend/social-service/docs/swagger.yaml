@@ -1,20 +1,64 @@
 basePath: /api/v1
 definitions:
+  dto.CreateChatDTO:
+    properties:
+      description:
+        maxLength: 4096
+        type: string
+      title:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - title
+    type: object
   dto.CreateCommentDTO:
     properties:
       body:
+        maxLength: 2000
+        minLength: 1
         type: string
       parent_id:
         type: string
+    required:
+    - body
     type: object
   dto.CreatePostDTO:
     properties:
       description:
+        maxLength: 4096
         type: string
       image_url:
+        maxLength: 2048
         type: string
       topic_id:
         type: integer
+    type: object
+  dto.CreateTopicDTO:
+    properties:
+      title:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - title
+    type: object
+  dto.MemberRole:
+    enum:
+    - member
+    - moderator
+    type: string
+    x-enum-varnames:
+    - RoleMember
+    - RoleModerator
+  dto.MessageDTO:
+    properties:
+      text:
+        maxLength: 4096
+        minLength: 1
+        type: string
+    required:
+    - text
     type: object
   dto.PostDTO:
     properties:
@@ -24,25 +68,92 @@ definitions:
   dto.ReportCommentDTO:
     properties:
       cause:
+        maxLength: 255
+        minLength: 1
         type: string
+    required:
+    - cause
     type: object
   dto.ReportDTO:
     properties:
       cause:
+        maxLength: 1024
+        minLength: 1
+        type: string
+    required:
+    - cause
+    type: object
+  dto.ReportTopicDTO:
+    properties:
+      cause:
+        maxLength: 255
+        minLength: 1
+        type: string
+    required:
+    - cause
+    type: object
+  dto.SetMemberRoleDTO:
+    properties:
+      role:
+        allOf:
+        - $ref: '#/definitions/dto.MemberRole'
+        enum:
+        - member
+        - moderator
+      user_id:
+        type: string
+    required:
+    - role
+    - user_id
+    type: object
+  dto.StreamDTO:
+    properties:
+      concurrentViewers:
+        type: integer
+      embedUrl:
+        type: string
+      lifeCycleStatus:
+        type: string
+      likeCount:
+        type: integer
+      title:
+        maxLength: 100
+        minLength: 1
+        type: string
+      videoId:
+        type: string
+    required:
+    - embedUrl
+    - lifeCycleStatus
+    - title
+    - videoId
+    type: object
+  dto.UpdateChatDTO:
+    properties:
+      description:
+        maxLength: 4096
+        type: string
+      title:
+        maxLength: 255
+        minLength: 1
         type: string
     type: object
   dto.UpdateCommentDTO:
     properties:
       body:
+        maxLength: 2000
+        minLength: 1
         type: string
+    required:
+    - body
     type: object
   dto.UpdatePostDTO:
     properties:
       description:
-        type: string
-      id:
+        maxLength: 4096
         type: string
       image_url:
+        maxLength: 2048
         type: string
       topic_id:
         type: integer
@@ -50,21 +161,234 @@ definitions:
   dto.UpdateProfileDTO:
     properties:
       avatar_url:
+        maxLength: 2048
         type: string
       bio:
+        maxLength: 4096
         type: string
       username:
         type: string
     type: object
-  dto.UserProfileDTO:
+  dto.UpdateStreamDTO:
+    properties:
+      concurrentViewers:
+        type: integer
+      embedUrl:
+        type: string
+      lifeCycleStatus:
+        type: string
+      likeCount:
+        type: integer
+      title:
+        maxLength: 100
+        minLength: 1
+        type: string
+    type: object
+  models.Chat:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      ownerID:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.ChatMember:
+    properties:
+      chatID:
+        type: string
+      joinedAt:
+        type: string
+      role:
+        $ref: '#/definitions/models.MemberRole'
+      userID:
+        type: string
+    type: object
+  models.FeedChatMember:
+    properties:
+      chatID:
+        type: string
+      joinedAt:
+        type: string
+      role:
+        $ref: '#/definitions/models.MemberRole'
+      userID:
+        type: string
+      userName:
+        type: string
+    type: object
+  models.FeedDirects:
+    properties:
+      avatarURL:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+      username:
+        type: string
+    type: object
+  models.FeedPost:
+    properties:
+      avatarURL:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      imageURL:
+        type: string
+      likeCount:
+        type: integer
+      postID:
+        type: string
+      topicID:
+        type: integer
+      topicName:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+      username:
+        type: string
+      views:
+        type: integer
+    type: object
+  models.FeedStream:
     properties:
       avatar_url:
         type: string
-      bio:
+      created_at:
+        type: string
+      embed_url:
+        type: string
+      id:
+        type: string
+      likes:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
         type: string
       user_id:
         type: string
       username:
+        type: string
+      video_id:
+        type: string
+      viewers:
+        type: integer
+    type: object
+  models.MemberRole:
+    enum:
+    - member
+    - moderator
+    type: string
+    x-enum-varnames:
+    - RoleMember
+    - RoleAdmin
+  models.Message:
+    properties:
+      chatID:
+        type: string
+      createdAt:
+        type: string
+      text:
+        type: string
+      userID:
+        type: string
+    type: object
+  models.Profile:
+    properties:
+      avatarUrl:
+        type: string
+      bio:
+        type: string
+      createdAt:
+        type: string
+      isBanned:
+        type: boolean
+      posts:
+        type: integer
+      subscribers:
+        type: integer
+      subscriptions:
+        type: integer
+      updatedAt:
+        type: string
+      userID:
+        type: string
+      userName:
+        type: string
+    type: object
+  models.ProfileResponse:
+    properties:
+      posts:
+        items:
+          $ref: '#/definitions/models.FeedPost'
+        type: array
+      profile:
+        $ref: '#/definitions/models.Profile'
+    type: object
+  models.Stream:
+    properties:
+      created_at:
+        type: string
+      embed_url:
+        type: string
+      id:
+        type: string
+      likes:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      video_id:
+        type: string
+      viewers:
+        type: integer
+    type: object
+  models.Subscribes:
+    properties:
+      targetID:
+        type: string
+    type: object
+  models.Subscriptions:
+    properties:
+      userID:
+        type: string
+    type: object
+  models.Topics:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      isDeleted:
+        type: boolean
+      title:
+        type: string
+      updatedAt:
+        type: string
+      userID:
         type: string
     type: object
   response.ErrorBody:
@@ -80,6 +404,624 @@ info:
   title: Social Service API
   version: "1.0"
 paths:
+  /social/chats:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт групповой чат, создатель становится его владельцем. Возвращает
+        ID созданного чата
+      parameters:
+      - description: Данные чата
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateChatDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID созданного чата
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать групповой чат
+      tags:
+      - chats
+  /social/chats/{chat_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удалить чат может только его владелец
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Чат не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить чат
+      tags:
+      - chats
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Chat'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Чат не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Получить чат по ID
+      tags:
+      - chats
+    patch:
+      consumes:
+      - application/json
+      description: Изменяет название и описание чата. Передаются только изменяемые
+        поля. Доступно владельцу и модераторам
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: Изменяемые поля
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateChatDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Chat'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Чат не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Обновить чат
+      tags:
+      - chats
+  /social/chats/{chat_id}/bans/{user_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Доступно владельцу и модераторам
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: ID разбаниваемого пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Разбанить пользователя в чате
+      tags:
+      - chats
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: ID проверяемого пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: true, если пользователь забанен
+          schema:
+            type: boolean
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Проверить, забанен ли пользователь в чате
+      tags:
+      - chats
+    post:
+      consumes:
+      - application/json
+      description: Исключает пользователя и запрещает ему повторное вступление. Доступно
+        владельцу и модераторам. Владельца забанить нельзя
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: ID банимого пользователя
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав или цель — владелец
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Забанить пользователя в чате
+      tags:
+      - chats
+  /social/chats/{chat_id}/leave:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Чат не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Выйти из чата
+      tags:
+      - chats
+  /social/chats/{chat_id}/members:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.FeedChatMember'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Список участников чата
+      tags:
+      - chats
+    post:
+      consumes:
+      - application/json
+      description: Добавляет текущего пользователя в чат. Забаненный в чате пользователь
+        вступить не может
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Пользователь забанен в чате
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: Пользователь уже в чате
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Вступить в чат
+      tags:
+      - chats
+  /social/chats/{chat_id}/members/{user_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Доступно владельцу и модераторам. Владельца исключить нельзя
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: ID исключаемого участника
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав или цель — владелец
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Исключить участника из чата
+      tags:
+      - chats
+  /social/chats/{chat_id}/members/{user_id}/role:
+    patch:
+      consumes:
+      - application/json
+      description: Меняет роль участника (member или moderator). Доступно только владельцу
+        чата
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: ID участника
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Новая роль
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetMemberRoleDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ChatMember'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Недостаточно прав
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Назначить роль участнику чата
+      tags:
+      - chats
+  /social/chats/{chat_id}/read:
+    post:
+      consumes:
+      - application/json
+      description: Запоминает время последнего прочтения чата текущим пользователем
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Чат не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Отметить чат прочитанным
+      tags:
+      - chats
+  /social/chats/directs/{user_id}:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт личный чат с указанным пользователем. Если один из пользователей
+        заблокировал другого, чат создать нельзя. Возвращает ID чата
+      parameters:
+      - description: ID собеседника
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID личного чата
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Один из пользователей заблокирован
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать личный чат
+      tags:
+      - chats
+  /social/chats/list:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает личные чаты текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.FeedDirects'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Список личных чатов
+      tags:
+      - chats
+  /social/message/chat/{chat_id}:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Message'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: История сообщений чата
+      tags:
+      - messages
+  /social/message/stream/{video_id}:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает последние сообщения чата стрима (хранятся 24 часа, не
+        более 200)
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Message'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: История чата стрима
+      tags:
+      - messages
   /social/posts:
     get:
       consumes:
@@ -654,9 +1596,21 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserProfileDTO'
+            $ref: '#/definitions/models.Profile'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: имя пользователя уже занято
           schema:
             $ref: '#/definitions/response.ErrorBody'
         "500":
@@ -685,12 +1639,49 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserProfileDTO'
+            $ref: '#/definitions/models.ProfileResponse'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
       summary: Получить профиль пользователя по ID
+      tags:
+      - profile
+  /social/profile/{user_id}/block:
+    post:
+      consumes:
+      - application/json
+      description: Блокирует указанного пользователя для текущего пользователя
+      parameters:
+      - description: ID пользователя, которого блокируем
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: пользователь уже заблокирован
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Заблокировать пользователя
       tags:
       - profile
   /social/profile/{user_id}/report:
@@ -716,11 +1707,15 @@ paths:
         "201":
           description: Created
         "400":
-          description: Bad Request
+          description: неверное тело или жалоба на себя
           schema:
             $ref: '#/definitions/response.ErrorBody'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: жалоба уже существует
           schema:
             $ref: '#/definitions/response.ErrorBody'
         "500":
@@ -748,8 +1743,16 @@ paths:
       responses:
         "201":
           description: Created
+        "400":
+          description: нельзя подписаться на себя
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: подписка уже существует
           schema:
             $ref: '#/definitions/response.ErrorBody'
         "500":
@@ -779,7 +1782,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dto.UserProfileDTO'
+              $ref: '#/definitions/models.Subscribes'
             type: array
         "500":
           description: Internal Server Error
@@ -807,7 +1810,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/dto.UserProfileDTO'
+              $ref: '#/definitions/models.Subscriptions'
             type: array
         "500":
           description: Internal Server Error
@@ -836,6 +1839,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: подписки нет
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
         "500":
           description: Internal Server Error
           schema:
@@ -857,9 +1864,13 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.UserProfileDTO'
+            $ref: '#/definitions/models.ProfileResponse'
         "401":
           description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Not Found
           schema:
             $ref: '#/definitions/response.ErrorBody'
         "500":
@@ -871,6 +1882,227 @@ paths:
       summary: Получить свой профиль
       tags:
       - profile
+  /social/streams:
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует YouTube-трансляцию текущего пользователя. Возвращает
+        ID созданной записи
+      parameters:
+      - description: Данные трансляции
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.StreamDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID созданного стрима
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: Такой стрим уже существует
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Сохранить стрим
+      tags:
+      - streams
+  /social/streams/{video_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Стрим не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить стрим
+      tags:
+      - streams
+    get:
+      consumes:
+      - application/json
+      description: Возвращает стрим текущего пользователя по ID видео
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Stream'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Стрим не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Получить стрим
+      tags:
+      - streams
+    patch:
+      consumes:
+      - application/json
+      description: Изменяет данные стрима текущего пользователя. Передаются только
+        изменяемые поля
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      - description: Изменяемые поля
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStreamDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Stream'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Стрим не найден
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Обновить стрим
+      tags:
+      - streams
+  /social/streams/{video_id}/join:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет текущего пользователя в список зрителей стрима. Только
+        зрители из этого списка могут писать в чат стрима и получать сообщения по
+        WebSocket
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Присоединиться к чату стрима
+      tags:
+      - streams
+  /social/streams/list:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает до 10 стримов, от новых к старым. Для следующей страницы
+        передаётся курсор из последнего элемента. Без курсора возвращается первая
+        страница
+      parameters:
+      - description: Курсор пагинации (base64)
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.FeedStream'
+            type: array
+        "400":
+          description: Неверный курсор
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Лента стримов
+      tags:
+      - streams
   /social/topics:
     get:
       consumes:
@@ -891,6 +2123,387 @@ paths:
       summary: Получить список топиков
       tags:
       - posts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные для создания топика
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTopicDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать топик
+      tags:
+      - posts
+  /social/topics/{topic_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID топика
+        in: path
+        name: topic_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить топик
+      tags:
+      - posts
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID топика
+        in: path
+        name: topic_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Topics'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить топик по ID
+      tags:
+      - posts
+  /social/topics/{topic_id}/report:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID топика
+        in: path
+        name: topic_id
+        required: true
+        type: string
+      - description: Данные жалобы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReportTopicDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Пожаловаться на топик
+      tags:
+      - posts
+  /social/ws/connect:
+    get:
+      description: 'Апгрейд соединения до WebSocket. Сервер каждые 30 секунд отправляет
+        ping. По сокету приходят JSON-события: для чатов {"id","chat_id","from","text"},
+        для стримов {"video_id","from","text"}. Сообщения отправляются отдельными
+        HTTP-запросами, по сокету клиент ничего не шлёт. Браузерный WebSocket не умеет
+        передавать заголовок Authorization'
+      responses:
+        "101":
+          description: Switching Protocols
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "426":
+          description: Не WebSocket-запрос
+      security:
+      - BearerAuth: []
+      summary: Подключиться к WebSocket
+      tags:
+      - websocket
+  /social/ws/message/direct/{chat_id}:
+    get:
+      consumes:
+      - application/json
+      description: Сохраняет сообщение и рассылает обоим участникам, подключённым
+        по WebSocket. Отправитель должен быть участником чата, а собеседник не должен
+        быть в блокировке. Возвращает ID сообщения
+      parameters:
+      - description: ID личного чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: Текст сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MessageDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID сообщения
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Не участник чата или блокировка
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение в личный чат
+      tags:
+      - messages
+  /social/ws/message/group/{chat_id}:
+    get:
+      consumes:
+      - application/json
+      description: Сохраняет сообщение и рассылает его участникам, подключённым по
+        WebSocket. Отправитель должен быть участником чата и не быть забаненным. Возвращает
+        ID сообщения
+      parameters:
+      - description: ID чата
+        in: path
+        name: chat_id
+        required: true
+        type: string
+      - description: Текст сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MessageDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID сообщения
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Не участник чата или забанен
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение в групповой чат
+      tags:
+      - messages
+  /social/ws/message/stream/{video_id}:
+    get:
+      consumes:
+      - application/json
+      description: Сохраняет сообщение и рассылает зрителям стрима, подключённым по
+        WebSocket. Отправитель должен быть в списке зрителей
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      - description: Текст сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MessageDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "403":
+          description: Пользователь не в списке зрителей стрима
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение в чат стрима
+      tags:
+      - messages
+  /social/youtube/callback:
+    get:
+      description: Проверяет state из cookie, обменивает code на токен, получает ID
+        канала пользователя через YouTube API и сохраняет его в профиле. В конце перенаправляет
+        на страницу настроек фронтенда
+      parameters:
+      - description: Значение state, выданное при старте OAuth
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Код авторизации Google
+        in: query
+        name: code
+        required: true
+        type: string
+      responses:
+        "303":
+          description: Перенаправление на страницу настроек
+        "400":
+          description: Неверный state, пустой code или у аккаунта нет YouTube-канала
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Не удалось обменять code на токен
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: Канал уже привязан к другому пользователю
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "502":
+          description: Ошибка запроса к YouTube API
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Завершить подключение YouTube-канала
+      tags:
+      - youtube
+  /social/youtube/channel:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает ID YouTube-канала текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID канала
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Пользователь не найден или канал не привязан
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Получить привязанный YouTube-канал
+      tags:
+      - youtube
+  /social/youtube/connect:
+    get:
+      description: Ставит cookie oauth_state на 5 минут и перенаправляет пользователя
+        на страницу согласия Google (доступ youtube.readonly)
+      responses:
+        "307":
+          description: Перенаправление на Google OAuth
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Начать подключение YouTube-канала
+      tags:
+      - youtube
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

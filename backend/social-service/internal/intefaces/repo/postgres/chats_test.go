@@ -1033,7 +1033,7 @@ func TestTouchChat(t *testing.T) {
 		{
 			caseName: "touch not found chat",
 			f:        func(t *testing.T) string { return uuid.NewString() },
-			success:  true,
+			success:  false,
 		},
 		{
 			caseName: "touch chat with invalid id",

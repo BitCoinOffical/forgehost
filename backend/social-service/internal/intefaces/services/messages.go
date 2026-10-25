@@ -50,7 +50,7 @@ func (s *MessageService) SaveGroupMessage(ctx context.Context, userID, chatID st
 		Text:      req.Text,
 		CreatedAt: time.Now(),
 	}
-	blocked, err := s.repo.CheckBanUser(ctx, userID, chatID)
+	blocked, err := s.repo.CheckBanUser(ctx, chatID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("s.repo.CheckBlock: %w", err)
 	}

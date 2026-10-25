@@ -16,7 +16,7 @@ import (
 
 var postsRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "post_requests_total",
-	Help: "Total number of auth requests",
+	Help: "Total number of post requests",
 })
 
 type PostHandler struct {
@@ -73,6 +73,10 @@ func (h *PostHandler) GetGlobalPosts(c *gin.Context) {
 
 	posts, err := h.srvc.GetGlobalPosts(c.Request.Context(), cursor)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidCursor) {
+			response.BadRequest(c, err, "invalid cursor", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get global posts", h.logger)
 		return
 	}
@@ -182,6 +186,10 @@ func (h *PostHandler) GetTopicByID(c *gin.Context) {
 
 	res, err := h.srvc.GetTopicByID(c.Request.Context(), topicId)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "topic not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get topic by id", h.logger)
 		return
 	}
@@ -217,6 +225,10 @@ func (h *PostHandler) CreateTopic(c *gin.Context) {
 	}
 
 	if err := h.srvc.CreateTopic(c.Request.Context(), id, &req); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "topic already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create topic", h.logger)
 		return
 	}
@@ -291,6 +303,14 @@ func (h *PostHandler) ReportTopic(c *gin.Context) {
 	}
 
 	if err := h.srvc.ReportTopic(c.Request.Context(), id, topicId, &req); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "topic not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "topic already reported", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed report topic", h.logger)
 		return
 	}
@@ -328,6 +348,10 @@ func (h *PostHandler) Update(c *gin.Context) {
 
 	res, err := h.srvc.UpdatePost(c.Request.Context(), &req, postID, userID)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "post not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed update post by id", h.logger)
 		return
 	}
@@ -382,6 +406,10 @@ func (h *PostHandler) ViewPost(c *gin.Context) {
 	postsRequestsTotal.Inc()
 	postId := c.Param("post_id")
 	if err := h.srvc.ViewPost(c.Request.Context(), postId); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "post not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed view post", h.logger)
 		return
 	}
@@ -417,6 +445,14 @@ func (h *PostHandler) PostReport(c *gin.Context) {
 	}
 
 	if err := h.srvc.ReportPost(c.Request.Context(), &req, userId, postId); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "post already reported", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "post not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report post", h.logger)
 		return
 	}
@@ -445,6 +481,14 @@ func (h *PostHandler) Like(c *gin.Context) {
 	}
 
 	if err := h.srvc.LikePost(c.Request.Context(), userId, postId); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "post already reported", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "post not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report post", h.logger)
 		return
 	}
@@ -473,6 +517,10 @@ func (h *PostHandler) Unlike(c *gin.Context) {
 	}
 
 	if err := h.srvc.UnlikePost(c.Request.Context(), userId, postId); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "post not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report post", h.logger)
 		return
 	}

@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,7 +16,7 @@ import (
 
 var comRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "com_requests_total",
-	Help: "Total number of auth requests",
+	Help: "Total number of com requests",
 })
 
 type CommentHandler struct {
@@ -77,6 +79,10 @@ func (h *CommentHandler) Create(c *gin.Context) {
 	}
 
 	if err := h.srvc.CreateComment(c.Request.Context(), postId, userId, &req); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "comment not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create comments", h.logger)
 		return
 	}
@@ -100,7 +106,7 @@ func (h *CommentHandler) Create(c *gin.Context) {
 // @Router       /social/posts/{post_id}/comments/{comment_id} [put]
 func (h *CommentHandler) Update(c *gin.Context) {
 	comRequestsTotal.Inc()
-	var req *dto.UpdateCommentDTO
+	var req dto.UpdateCommentDTO
 	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
 		response.BadRequest(c, err, "invalid request body", h.logger)
 		return
@@ -114,8 +120,12 @@ func (h *CommentHandler) Update(c *gin.Context) {
 		return
 	}
 
-	res, err := h.srvc.UpdateComment(c.Request.Context(), postId, userId, commentId, req)
+	res, err := h.srvc.UpdateComment(c.Request.Context(), postId, userId, commentId, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "comment not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create comments", h.logger)
 		return
 	}
@@ -145,7 +155,7 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.srvc.DeleteComment(c.Request.Context(), postId, commentId, userId); err != nil {
+	if err := h.srvc.DeleteComment(c.Request.Context(), postId, userId, commentId); err != nil {
 		response.InternalServerError(c, err, "failed delete comments", h.logger)
 		return
 	}
@@ -182,6 +192,14 @@ func (h *CommentHandler) Report(c *gin.Context) {
 	}
 
 	if err := h.srvc.ReportComment(c.Request.Context(), userId, commentId, &req); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "comment not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "comment already reported", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report comments", h.logger)
 		return
 	}
@@ -211,6 +229,14 @@ func (h *CommentHandler) Like(c *gin.Context) {
 	}
 
 	if err := h.srvc.LikeComment(c.Request.Context(), userId, commentId); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "comment not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "comment already liked", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report comments", h.logger)
 		return
 	}
@@ -240,6 +266,10 @@ func (h *CommentHandler) Unlike(c *gin.Context) {
 	}
 
 	if err := h.srvc.UnlikeComment(c.Request.Context(), userId, commentId); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "comment not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create report comments", h.logger)
 		return
 	}
