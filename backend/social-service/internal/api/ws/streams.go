@@ -128,7 +128,20 @@ func (h *StreamHandler) GetStreamHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, msgs)
 }
 
+// SaveStreamUser godoc
+// @Summary      Присоединиться к чату стрима
+// @Description  Добавляет текущего пользователя в список зрителей стрима. Только зрители из этого списка могут писать в чат стрима и получать сообщения по WebSocket
+// @Tags         streams
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        video_id  path  string  true  "ID видео на YouTube"
+// @Success      200
+// @Failure      401  {object}  response.ErrorBody
+// @Failure      500  {object}  response.ErrorBody
+// @Router       /social/streams/{video_id}/join [post]
 func (h *StreamHandler) SaveStreamUser(c *gin.Context) {
+	strmRequestsTotal.Inc()
 	videoID := c.Param("video_id")
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
