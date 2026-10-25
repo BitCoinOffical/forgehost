@@ -8,7 +8,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	jwtpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/jwt"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -22,12 +21,12 @@ const (
 )
 
 type StreamHandler struct {
-	srvc     *services.StreamService
+	srvc     StreamService
 	oauthCfg *oauth2.Config
 	logger   *zap.Logger
 }
 
-func NewStreamHandler(logger *zap.Logger, oauthCfg *oauth2.Config, srvc *services.StreamService) *StreamHandler {
+func NewStreamHandler(logger *zap.Logger, oauthCfg *oauth2.Config, srvc StreamService) *StreamHandler {
 	return &StreamHandler{logger: logger, oauthCfg: oauthCfg, srvc: srvc}
 }
 
@@ -53,9 +52,13 @@ func (h *StreamHandler) GoogleLogin(c *gin.Context) {
 }
 
 func (h *StreamHandler) GoogleCallback(c *gin.Context) {
-	storedId, err := c.Cookie("oauth_state")
-	if err != nil || c.Query("state") != storedId {
+	storedID, err := c.Cookie("oauth_state")
+	if err != nil {
 		response.BadRequest(c, err, "invalid state", h.logger)
+		return
+	}
+	if c.Query("state") != storedID {
+		response.BadRequest(c, domain.ErrInvalidState, "invalid state", h.logger)
 		return
 	}
 
@@ -71,7 +74,7 @@ func (h *StreamHandler) GoogleCallback(c *gin.Context) {
 
 	code := c.Query("code")
 	if code == "" {
-		response.BadRequest(c, err, "empty query", h.logger)
+		response.BadRequest(c, domain.ErrEmptyValue, "empty query", h.logger)
 		return
 	}
 
@@ -88,8 +91,12 @@ func (h *StreamHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	resp, err := svc.Channels.List([]string{"id"}).Mine(true).Do()
-	if err != nil || len(resp.Items) == 0 {
-		response.BadRequest(c, err, "no youtube channel", h.logger)
+	if err != nil {
+		response.BadGateway(c, err, "youtube request failed", h.logger)
+		return
+	}
+	if len(resp.Items) == 0 {
+		response.BadRequest(c, errors.New("no youtube channel"), "no youtube channel", h.logger)
 		return
 	}
 
@@ -101,6 +108,10 @@ func (h *StreamHandler) GoogleCallback(c *gin.Context) {
 	}
 
 	if err := h.srvc.SaveChannel(c.Request.Context(), channelID, userID); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "stream already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed save channel id", h.logger)
 		return
 	}
@@ -146,6 +157,10 @@ func (h *StreamHandler) SaveStream(c *gin.Context) {
 
 	streamID, err := h.srvc.SaveStream(c.Request.Context(), userID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "stream already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed save stream", h.logger)
 		return
 	}
@@ -169,6 +184,10 @@ func (h *StreamHandler) BuildUpdateStream(c *gin.Context) {
 
 	stream, err := h.srvc.BuildUpdateStream(c.Request.Context(), userID, videoID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrStreamNotFound) {
+			response.NotFound(c, err, "stream not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed update stream", h.logger)
 		return
 	}
@@ -185,6 +204,10 @@ func (h *StreamHandler) DeleteStream(c *gin.Context) {
 	}
 
 	if err := h.srvc.DeleteStream(c.Request.Context(), videoID, userID); err != nil {
+		if errors.Is(err, domain.ErrStreamNotFound) {
+			response.NotFound(c, err, "stream not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed delete stream", h.logger)
 		return
 	}
@@ -202,6 +225,10 @@ func (h *StreamHandler) GetStream(c *gin.Context) {
 
 	stream, err := h.srvc.GetStream(c.Request.Context(), videoID, userID)
 	if err != nil {
+		if errors.Is(err, domain.ErrStreamNotFound) {
+			response.NotFound(c, err, "stream not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get stream", h.logger)
 		return
 	}
@@ -213,6 +240,10 @@ func (h *StreamHandler) GetCursorStreams(c *gin.Context) {
 	cursor := c.Param("cursor")
 	streams, err := h.srvc.GetCursorStreams(c.Request.Context(), cursor)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidCursor) {
+			response.BadRequest(c, err, "invalid cursor", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get streams", h.logger)
 		return
 	}
