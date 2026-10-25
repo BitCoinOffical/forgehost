@@ -10,6 +10,963 @@
     "host": "localhost:8084",
     "basePath": "/api/v1",
     "paths": {
+        "/social/chats": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт групповой чат, создатель становится его владельцем. Возвращает ID созданного чата",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Создать групповой чат",
+                "parameters": [
+                    {
+                        "description": "Данные чата",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateChatDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "ID созданного чата",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/directs/{user_id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт личный чат с указанным пользователем. Если один из пользователей заблокировал другого, чат создать нельзя. Возвращает ID чата",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Создать личный чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID собеседника",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "ID личного чата",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Один из пользователей заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает личные чаты текущего пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Список личных чатов",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.FeedDirects"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Получить чат по ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Chat"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удалить чат может только его владелец",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Удалить чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Изменяет название и описание чата. Передаются только изменяемые поля. Доступно владельцу и модераторам",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Обновить чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Изменяемые поля",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateChatDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Chat"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/bans/{user_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Проверить, забанен ли пользователь в чате",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID проверяемого пользователя",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "true, если пользователь забанен",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Исключает пользователя и запрещает ему повторное вступление. Доступно владельцу и модераторам. Владельца забанить нельзя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Забанить пользователя в чате",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID банимого пользователя",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав или цель — владелец",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Доступно владельцу и модераторам",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Разбанить пользователя в чате",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID разбаниваемого пользователя",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/leave": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Выйти из чата",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Список участников чата",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.FeedChatMember"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет текущего пользователя в чат. Забаненный в чате пользователь вступить не может",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Вступить в чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь забанен в чате",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "Пользователь уже в чате",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/members/{user_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Доступно владельцу и модераторам. Владельца исключить нельзя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Исключить участника из чата",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID исключаемого участника",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав или цель — владелец",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/members/{user_id}/role": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Меняет роль участника (member или moderator). Доступно только владельцу чата",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Назначить роль участнику чата",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID участника",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Новая роль",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SetMemberRoleDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ChatMember"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/chats/{chat_id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Запоминает время последнего прочтения чата текущим пользователем",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "chats"
+                ],
+                "summary": "Отметить чат прочитанным",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/message/chat/{chat_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "История сообщений чата",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Message"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/message/stream/{video_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает последние сообщения чата стрима (хранятся 24 часа, не более 200)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "История чата стрима",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Message"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/social/posts": {
             "get": {
                 "security": [
@@ -916,11 +1873,29 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserProfileDTO"
+                            "$ref": "#/definitions/models.Profile"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "имя пользователя уже занято",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
@@ -956,11 +1931,17 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserProfileDTO"
+                            "$ref": "#/definitions/models.ProfileResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
@@ -1000,11 +1981,69 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.UserProfileDTO"
+                            "$ref": "#/definitions/models.ProfileResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/profile/{user_id}/block": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Блокирует указанного пользователя для текущего пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Заблокировать пользователя",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID пользователя, которого блокируем",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "пользователь уже заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
@@ -1053,13 +2092,19 @@
                         "description": "Created"
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "неверное тело или жалоба на себя",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "жалоба уже существует",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
@@ -1104,8 +2149,20 @@
                     "201": {
                         "description": "Created"
                     },
+                    "400": {
+                        "description": "нельзя подписаться на себя",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "подписка уже существует",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorBody"
                         }
@@ -1147,7 +2204,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dto.UserProfileDTO"
+                                "$ref": "#/definitions/models.Subscribes"
                             }
                         }
                     },
@@ -1188,7 +2245,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/dto.UserProfileDTO"
+                                "$ref": "#/definitions/models.Subscriptions"
                             }
                         }
                     },
@@ -1238,6 +2295,304 @@
                             "$ref": "#/definitions/response.ErrorBody"
                         }
                     },
+                    "404": {
+                        "description": "подписки нет",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/streams": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Регистрирует YouTube-трансляцию текущего пользователя. Возвращает ID созданной записи",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Сохранить стрим",
+                "parameters": [
+                    {
+                        "description": "Данные трансляции",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.StreamDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "ID созданного стрима",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "Такой стрим уже существует",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/streams/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает до 10 стримов, от новых к старым. Для следующей страницы передаётся курсор из последнего элемента. Без курсора возвращается первая страница",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Лента стримов",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Курсор пагинации (base64)",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.FeedStream"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный курсор",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/streams/{video_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает стрим текущего пользователя по ID видео",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Получить стрим",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Stream"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Стрим не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Удалить стрим",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Стрим не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Изменяет данные стрима текущего пользователя. Передаются только изменяемые поля",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Обновить стрим",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Изменяемые поля",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateStreamDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Stream"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Стрим не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1276,15 +2631,617 @@
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Создать топик",
+                "parameters": [
+                    {
+                        "description": "Данные для создания топика",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateTopicDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/topics/{topic_id}": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Получить топик по ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID топика",
+                        "name": "topic_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Topics"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Удалить топик",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID топика",
+                        "name": "topic_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/topics/{topic_id}/report": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Пожаловаться на топик",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID топика",
+                        "name": "topic_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные жалобы",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportTopicDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/ws/connect": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Апгрейд соединения до WebSocket. Сервер каждые 30 секунд отправляет ping. По сокету приходят JSON-события: для чатов {\"id\",\"chat_id\",\"from\",\"text\"}, для стримов {\"video_id\",\"from\",\"text\"}. Сообщения отправляются отдельными HTTP-запросами, по сокету клиент ничего не шлёт. Браузерный WebSocket не умеет передавать заголовок Authorization",
+                "tags": [
+                    "websocket"
+                ],
+                "summary": "Подключиться к WebSocket",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "426": {
+                        "description": "Не WebSocket-запрос"
+                    }
+                }
+            }
+        },
+        "/social/ws/message/direct/{chat_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сохраняет сообщение и рассылает обоим участникам, подключённым по WebSocket. Отправитель должен быть участником чата, а собеседник не должен быть в блокировке. Возвращает ID сообщения",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Отправить сообщение в личный чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID личного чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Текст сообщения",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ID сообщения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Не участник чата или блокировка",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/ws/message/group/{chat_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сохраняет сообщение и рассылает его участникам, подключённым по WebSocket. Отправитель должен быть участником чата и не быть забаненным. Возвращает ID сообщения",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Отправить сообщение в групповой чат",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID чата",
+                        "name": "chat_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Текст сообщения",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "ID сообщения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Не участник чата или забанен",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/ws/message/stream/{video_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сохраняет сообщение и рассылает зрителям стрима, подключённым по WebSocket. Отправитель должен быть в списке зрителей",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "messages"
+                ],
+                "summary": "Отправить сообщение в чат стрима",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Текст сообщения",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь не в списке зрителей стрима",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/youtube/callback": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Проверяет state из cookie, обменивает code на токен, получает ID канала пользователя через YouTube API и сохраняет его в профиле. В конце перенаправляет на страницу настроек фронтенда",
+                "tags": [
+                    "youtube"
+                ],
+                "summary": "Завершить подключение YouTube-канала",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Значение state, выданное при старте OAuth",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Код авторизации Google",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "303": {
+                        "description": "Перенаправление на страницу настроек"
+                    },
+                    "400": {
+                        "description": "Неверный state, пустой code или у аккаунта нет YouTube-канала",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Не удалось обменять code на токен",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "409": {
+                        "description": "Канал уже привязан к другому пользователю",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "502": {
+                        "description": "Ошибка запроса к YouTube API",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/youtube/channel": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает ID YouTube-канала текущего пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "youtube"
+                ],
+                "summary": "Получить привязанный YouTube-канал",
+                "responses": {
+                    "200": {
+                        "description": "ID канала",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не найден или канал не привязан",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/youtube/connect": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ставит cookie oauth_state на 5 минут и перенаправляет пользователя на страницу согласия Google (доступ youtube.readonly)",
+                "tags": [
+                    "youtube"
+                ],
+                "summary": "Начать подключение YouTube-канала",
+                "responses": {
+                    "307": {
+                        "description": "Перенаправление на Google OAuth"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
+        "dto.CreateChatDTO": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 4096
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
         "dto.CreateCommentDTO": {
             "type": "object",
+            "required": [
+                "body"
+            ],
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2000,
+                    "minLength": 1
                 },
                 "parent_id": {
                     "type": "string"
@@ -1295,13 +3252,52 @@
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 4096
                 },
                 "image_url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                 },
                 "topic_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "dto.CreateTopicDTO": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.MemberRole": {
+            "type": "string",
+            "enum": [
+                "member",
+                "moderator"
+            ],
+            "x-enum-varnames": [
+                "RoleMember",
+                "RoleModerator"
+            ]
+        },
+        "dto.MessageDTO": {
+            "type": "object",
+            "required": [
+                "text"
+            ],
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "maxLength": 4096,
+                    "minLength": 1
                 }
             }
         },
@@ -1315,25 +3311,121 @@
         },
         "dto.ReportCommentDTO": {
             "type": "object",
+            "required": [
+                "cause"
+            ],
             "properties": {
                 "cause": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 }
             }
         },
         "dto.ReportDTO": {
             "type": "object",
+            "required": [
+                "cause"
+            ],
             "properties": {
                 "cause": {
+                    "type": "string",
+                    "maxLength": 1024,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.ReportTopicDTO": {
+            "type": "object",
+            "required": [
+                "cause"
+            ],
+            "properties": {
+                "cause": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                }
+            }
+        },
+        "dto.SetMemberRoleDTO": {
+            "type": "object",
+            "required": [
+                "role",
+                "user_id"
+            ],
+            "properties": {
+                "role": {
+                    "enum": [
+                        "member",
+                        "moderator"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.MemberRole"
+                        }
+                    ]
+                },
+                "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.StreamDTO": {
+            "type": "object",
+            "required": [
+                "embedUrl",
+                "lifeCycleStatus",
+                "title",
+                "videoId"
+            ],
+            "properties": {
+                "concurrentViewers": {
+                    "type": "integer"
+                },
+                "embedUrl": {
+                    "type": "string"
+                },
+                "lifeCycleStatus": {
+                    "type": "string"
+                },
+                "likeCount": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "videoId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateChatDTO": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "maxLength": 4096
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
                 }
             }
         },
         "dto.UpdateCommentDTO": {
             "type": "object",
+            "required": [
+                "body"
+            ],
             "properties": {
                 "body": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2000,
+                    "minLength": 1
                 }
             }
         },
@@ -1341,13 +3433,12 @@
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 4096
                 },
                 "image_url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                 },
                 "topic_id": {
                     "type": "integer"
@@ -1358,9 +3449,116 @@
             "type": "object",
             "properties": {
                 "avatar_url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                 },
                 "bio": {
+                    "type": "string",
+                    "maxLength": 4096
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateStreamDTO": {
+            "type": "object",
+            "properties": {
+                "concurrentViewers": {
+                    "type": "integer"
+                },
+                "embedUrl": {
+                    "type": "string"
+                },
+                "lifeCycleStatus": {
+                    "type": "string"
+                },
+                "likeCount": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                }
+            }
+        },
+        "models.Chat": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ownerID": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ChatMember": {
+            "type": "object",
+            "properties": {
+                "chatID": {
+                    "type": "string"
+                },
+                "joinedAt": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/models.MemberRole"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.FeedChatMember": {
+            "type": "object",
+            "properties": {
+                "chatID": {
+                    "type": "string"
+                },
+                "joinedAt": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/models.MemberRole"
+                },
+                "userID": {
+                    "type": "string"
+                },
+                "userName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.FeedDirects": {
+            "type": "object",
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
                     "type": "string"
                 },
                 "username": {
@@ -1368,19 +3566,235 @@
                 }
             }
         },
-        "dto.UserProfileDTO": {
+        "models.FeedPost": {
+            "type": "object",
+            "properties": {
+                "avatarURL": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "imageURL": {
+                    "type": "string"
+                },
+                "likeCount": {
+                    "type": "integer"
+                },
+                "postID": {
+                    "type": "string"
+                },
+                "topicID": {
+                    "type": "integer"
+                },
+                "topicName": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "views": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.FeedStream": {
             "type": "object",
             "properties": {
                 "avatar_url": {
                     "type": "string"
                 },
-                "bio": {
+                "created_at": {
+                    "type": "string"
+                },
+                "embed_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "likes": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "user_id": {
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                },
+                "video_id": {
+                    "type": "string"
+                },
+                "viewers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.MemberRole": {
+            "type": "string",
+            "enum": [
+                "member",
+                "moderator"
+            ],
+            "x-enum-varnames": [
+                "RoleMember",
+                "RoleAdmin"
+            ]
+        },
+        "models.Message": {
+            "type": "object",
+            "properties": {
+                "chatID": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Profile": {
+            "type": "object",
+            "properties": {
+                "avatarUrl": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "isBanned": {
+                    "type": "boolean"
+                },
+                "posts": {
+                    "type": "integer"
+                },
+                "subscribers": {
+                    "type": "integer"
+                },
+                "subscriptions": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                },
+                "userName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "posts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.FeedPost"
+                    }
+                },
+                "profile": {
+                    "$ref": "#/definitions/models.Profile"
+                }
+            }
+        },
+        "models.Stream": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "embed_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "likes": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "video_id": {
+                    "type": "string"
+                },
+                "viewers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.Subscribes": {
+            "type": "object",
+            "properties": {
+                "targetID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Subscriptions": {
+            "type": "object",
+            "properties": {
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Topics": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isDeleted": {
+                    "type": "boolean"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
                     "type": "string"
                 }
             }
