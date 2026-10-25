@@ -451,23 +451,29 @@ func (r *ChatsRepo) GetChatList(ctx context.Context, userID string) ([]models.Fe
 }
 
 func (r *ChatsRepo) TouchChat(ctx context.Context, chatID string) error {
-	_, err := r.pool.Exec(ctx, `
+	tag, err := r.pool.Exec(ctx, `
 		UPDATE directs SET updated_at = NOW() WHERE id = $1
 	`, chatID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
 	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
 	return nil
 }
 
 func (r *ChatsRepo) MarkAsRead(ctx context.Context, chatID, userID string) error {
-	_, err := r.pool.Exec(ctx, `
+	tag, err := r.pool.Exec(ctx, `
 		INSERT INTO chat_reads (chat_id, user_id, last_read_at)
 		VALUES ($1, $2, NOW())
 		ON CONFLICT (chat_id, user_id) DO UPDATE SET last_read_at = NOW()
 	`, chatID, userID)
 	if err != nil {
 		return fmt.Errorf("r.pool.Exec: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
 	}
 	return nil
 }
