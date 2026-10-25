@@ -282,9 +282,9 @@ func TestUpdateProfile(t *testing.T) {
 			tc.prepare()
 
 			req := dto.UpdateProfileDTO{
-				UserName:  tc.data.userName,
-				Bio:       tc.data.bio,
-				AvatarUrl: tc.data.avatarURL,
+				UserName:  &tc.data.userName,
+				Bio:       &tc.data.bio,
+				AvatarUrl: &tc.data.avatarURL,
 			}
 			got, err := profile.UpdateProfile(t.Context(), &req, tc.data.userID)
 			if tc.success {
