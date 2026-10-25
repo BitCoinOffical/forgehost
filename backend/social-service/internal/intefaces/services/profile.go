@@ -42,9 +42,9 @@ func (s *ProfileService) SaveProfile(ctx context.Context, event *dto.UserProfile
 func (s *ProfileService) UpdateProfile(ctx context.Context, req *dto.UpdateProfileDTO, id string) (*models.Profile, error) {
 	profile := models.Profile{
 		UserID:    id,
-		UserName:  &req.UserName,
-		Bio:       &req.Bio,
-		AvatarUrl: &req.AvatarUrl,
+		UserName:  req.UserName,
+		Bio:       req.Bio,
+		AvatarUrl: req.AvatarUrl,
 	}
 	prof, err := s.repo.BuildUpdateProfile(ctx, &profile)
 	if err != nil {
