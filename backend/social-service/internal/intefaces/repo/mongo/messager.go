@@ -40,7 +40,8 @@ func (r *MessagerRepo) GetMessages(ctx context.Context, chatID string) ([]models
 	}
 	defer cursor.Close(ctx)
 
-	var msgs []models.Message
+	msgs := []models.Message{}
+
 	if err := cursor.All(ctx, &msgs); err != nil {
 		return nil, fmt.Errorf("cursor.All: %w", err)
 	}
