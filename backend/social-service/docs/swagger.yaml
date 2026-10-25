@@ -2034,6 +2034,37 @@ paths:
       summary: Обновить стрим
       tags:
       - streams
+  /social/streams/{video_id}/join:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет текущего пользователя в список зрителей стрима. Только
+        зрители из этого списка могут писать в чат стрима и получать сообщения по
+        WebSocket
+      parameters:
+      - description: ID видео на YouTube
+        in: path
+        name: video_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Присоединиться к чату стрима
+      tags:
+      - streams
   /social/streams/list:
     get:
       consumes:

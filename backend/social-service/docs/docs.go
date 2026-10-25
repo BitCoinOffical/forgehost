@@ -2608,6 +2608,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/social/streams/{video_id}/join": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет текущего пользователя в список зрителей стрима. Только зрители из этого списка могут писать в чат стрима и получать сообщения по WebSocket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "streams"
+                ],
+                "summary": "Присоединиться к чату стрима",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID видео на YouTube",
+                        "name": "video_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/social/topics": {
             "get": {
                 "consumes": [
