@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/BitCoinOffical/forgehost/social-service/config"
@@ -11,10 +12,14 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/ws"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+var usernameRe = regexp.MustCompile(`^[a-zA-Z0-9_]{3,32}$`)
 
 const (
 	timeoutSecond = 5
@@ -30,6 +35,11 @@ type Server struct {
 
 func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers, ws *ws.WebSockerHandlers) *Server {
 	engine := gin.New()
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("username", func(fl validator.FieldLevel) bool {
+			return usernameRe.MatchString(fl.Field().String())
+		})
+	}
 	return &Server{
 		h:      h,
 		m:      m,
@@ -114,7 +124,7 @@ func (s *Server) Run() error {
 		social.GET("/youtube/channel", s.h.Stream.GetChannel)
 
 		social.POST("/streams", s.h.Stream.SaveStream)
-		social.GET("/streams/list", s.h.Stream.GetCursorStreams)
+		social.GET("/streams/list/:cursor", s.h.Stream.GetCursorStreams)
 		social.GET("/streams/:video_id", s.h.Stream.GetStream)
 		social.DELETE("/streams/:video_id", s.h.Stream.DeleteStream)
 		social.PATCH("/streams/:video_id", s.h.Stream.BuildUpdateStream)
