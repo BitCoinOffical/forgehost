@@ -16,7 +16,7 @@ import (
 
 var profRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "prof_requests_total",
-	Help: "Total number of auth requests",
+	Help: "Total number of prof requests",
 })
 
 type ProfileHandler struct {
