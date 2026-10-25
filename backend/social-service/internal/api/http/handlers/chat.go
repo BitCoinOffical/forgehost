@@ -8,17 +8,16 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 type ChatHandler struct {
-	srvc   *services.ChatService
+	srvc   ChatService
 	logger *zap.Logger
 }
 
-func NewChatHandler(srvc *services.ChatService, logger *zap.Logger) *ChatHandler {
+func NewChatHandler(srvc ChatService, logger *zap.Logger) *ChatHandler {
 	return &ChatHandler{srvc: srvc, logger: logger}
 }
 
@@ -90,6 +89,10 @@ func (h *ChatHandler) MarkAsRead(c *gin.Context) {
 	}
 
 	if err := h.srvc.MarkAsRead(c.Request.Context(), chatID, userID); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "message not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed mark as read", h.logger)
 		return
 	}
@@ -121,6 +124,14 @@ func (h *ChatHandler) DeleteChat(c *gin.Context) {
 		return
 	}
 	if err := h.srvc.DeleteChat(c.Request.Context(), chatID, ownerID); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "chat not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "failed delete chat", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed delete chat", h.logger)
 		return
 	}
@@ -137,6 +148,11 @@ func (h *ChatHandler) LeaveChat(c *gin.Context) {
 	}
 
 	if err := h.srvc.LeaveChat(c.Request.Context(), chatID, userID); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "chat not found", h.logger)
+			return
+		}
+
 		response.InternalServerError(c, err, "failed leave chat", h.logger)
 		return
 	}
@@ -158,6 +174,10 @@ func (h *ChatHandler) UpdateChat(c *gin.Context) {
 	}
 	resp, err := h.srvc.BuildUpdateChat(c.Request.Context(), chatID, userID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "chat not found", h.logger)
+			return
+		}
 		if errors.Is(err, domain.ErrForbidden) {
 			response.Forbidden(c, err, "not enough rights", h.logger)
 			return
@@ -202,6 +222,14 @@ func (h *ChatHandler) JoinInChat(c *gin.Context) {
 		return
 	}
 	if err := h.srvc.AddUserInChat(c.Request.Context(), chatID, userID); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "user already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed add user in chat", h.logger)
 		return
 	}
@@ -218,7 +246,7 @@ func (h *ChatHandler) KickUserFromChat(c *gin.Context) {
 	}
 
 	if err := h.srvc.KickUserFromChat(c.Request.Context(), chatID, targetID, userID); err != nil {
-		if errors.Is(err, domain.ErrForbidden) {
+		if errors.Is(err, domain.ErrForbidden) || errors.Is(err, domain.ErrCannotKickOwner) {
 			response.Forbidden(c, err, "not enough rights", h.logger)
 			return
 		}
@@ -250,7 +278,7 @@ func (h *ChatHandler) BanUser(c *gin.Context) {
 	}
 
 	if err := h.srvc.BanUser(c.Request.Context(), chatID, targetID, userID); err != nil {
-		if errors.Is(err, domain.ErrForbidden) {
+		if errors.Is(err, domain.ErrForbidden) || errors.Is(err, domain.ErrCannotKickOwner) {
 			response.Forbidden(c, err, "not enough rights", h.logger)
 			return
 		}
