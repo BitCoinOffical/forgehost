@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -18,10 +18,10 @@ import (
 type MessagerHandler struct {
 	hub    *Hub
 	logger *zap.Logger
-	srvc   *services.MessageService
+	srvc   MessageService
 }
 
-func NewMessageHandler(hub *Hub, srvc *services.MessageService, logger *zap.Logger) *MessagerHandler {
+func NewMessageHandler(hub *Hub, srvc MessageService, logger *zap.Logger) *MessagerHandler {
 	return &MessagerHandler{hub: hub, logger: logger, srvc: srvc}
 }
 
@@ -83,6 +83,10 @@ func (h *MessagerHandler) SendMessageGroup(c *gin.Context) {
 
 	members, err := h.srvc.GetUsersFromChat(c.Request.Context(), chatID)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get members", h.logger)
 		return
 	}
@@ -102,6 +106,10 @@ func (h *MessagerHandler) SendMessageGroup(c *gin.Context) {
 
 	objID, err := h.srvc.SaveGroupMessage(c.Request.Context(), userID, chatID, &msg)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed save message", h.logger)
 		return
 	}
@@ -134,6 +142,10 @@ func (h *MessagerHandler) SendMessageDirect(c *gin.Context) {
 
 	members, err := h.srvc.GetUsersFromChat(c.Request.Context(), chatID)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get members", h.logger)
 		return
 	}
@@ -153,6 +165,10 @@ func (h *MessagerHandler) SendMessageDirect(c *gin.Context) {
 
 	objID, err := h.srvc.SaveDirectMessage(c.Request.Context(), userID, chatID, &msg)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed save message", h.logger)
 		return
 	}
