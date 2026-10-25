@@ -16,7 +16,7 @@ import (
 
 var postsRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "post_requests_total",
-	Help: "Total number of auth requests",
+	Help: "Total number of post requests",
 })
 
 type PostHandler struct {
