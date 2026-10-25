@@ -35,8 +35,9 @@ func NewProfileHandler(srvc ProfileService, logger *zap.Logger) *ProfileHandler 
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200  {object}  dto.UserProfileDTO
+// @Success      200  {object}  models.ProfileResponse
 // @Failure      401  {object}  response.ErrorBody
+// @Failure      404  {object}  response.ErrorBody
 // @Failure      500  {object}  response.ErrorBody
 // @Router       /social/profile/me [get]
 func (h *ProfileHandler) Me(c *gin.Context) {
@@ -49,6 +50,10 @@ func (h *ProfileHandler) Me(c *gin.Context) {
 
 	resp, err := h.srvc.GetProfileByID(c.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "profile not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get profile", h.logger)
 		return
 	}
@@ -63,8 +68,9 @@ func (h *ProfileHandler) Me(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        user_id  path      string  true  "ID пользователя"
-// @Success      200      {object}  dto.UserProfileDTO
+// @Success      200      {object}  models.ProfileResponse
 // @Failure      404      {object}  response.ErrorBody
+// @Failure      500      {object}  response.ErrorBody
 // @Router       /social/profile/{user_id} [get]
 func (h *ProfileHandler) GetProfileByID(c *gin.Context) {
 	profRequestsTotal.Inc()
@@ -76,7 +82,7 @@ func (h *ProfileHandler) GetProfileByID(c *gin.Context) {
 			response.NotFound(c, err, "profile not found", h.logger)
 			return
 		}
-		c.JSON(http.StatusNotFound, gin.H{"error": "profile not found"})
+		response.InternalServerError(c, err, "failed get profile", h.logger)
 		return
 	}
 
@@ -91,26 +97,37 @@ func (h *ProfileHandler) GetProfileByID(c *gin.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        request  body      dto.UpdateProfileDTO  true  "Данные для обновления"
-// @Success      200      {object}  dto.UserProfileDTO
+// @Success      200      {object}  models.Profile
 // @Failure      400      {object}  response.ErrorBody
+// @Failure      401      {object}  response.ErrorBody
+// @Failure      404      {object}  response.ErrorBody
+// @Failure      409      {object}  response.ErrorBody  "имя пользователя уже занято"
 // @Failure      500      {object}  response.ErrorBody
 // @Router       /social/profile [patch]
 func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 	profRequestsTotal.Inc()
-	var req dto.UpdateProfileDTO
-	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
-		response.BadRequest(c, err, "invalid request body", h.logger)
-		return
-	}
-
 	id, err := middleware.GetUserID(c)
 	if err != nil {
 		response.Unauthorized(c, err, "failed get user id", h.logger)
 		return
 	}
 
+	var req dto.UpdateProfileDTO
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		response.BadRequest(c, err, "invalid request body", h.logger)
+		return
+	}
+
 	prof, err := h.srvc.UpdateProfile(c.Request.Context(), &req, id)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "profile not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "username already taken", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed update profile", h.logger)
 		return
 	}
@@ -125,7 +142,7 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        user_id  path      string  true  "ID пользователя"
-// @Success      200      {array}   dto.UserProfileDTO
+// @Success      200      {array}   models.Subscribes
 // @Failure      500      {object}  response.ErrorBody
 // @Router       /social/profile/{user_id}/subscribers [get]
 func (h *ProfileHandler) GetSubscribers(c *gin.Context) {
@@ -148,7 +165,7 @@ func (h *ProfileHandler) GetSubscribers(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        user_id  path      string  true  "ID пользователя"
-// @Success      200      {array}   dto.UserProfileDTO
+// @Success      200      {array}   models.Subscriptions
 // @Failure      500      {object}  response.ErrorBody
 // @Router       /social/profile/{user_id}/subscriptions [get]
 func (h *ProfileHandler) GetSubscriptions(c *gin.Context) {
@@ -157,7 +174,7 @@ func (h *ProfileHandler) GetSubscriptions(c *gin.Context) {
 
 	subs, err := h.srvc.GetSubscriptions(c.Request.Context(), userId)
 	if err != nil {
-		response.InternalServerError(c, err, "failed get GetSubscriptions", h.logger)
+		response.InternalServerError(c, err, "failed get subscriptions", h.logger)
 		return
 	}
 
@@ -173,7 +190,9 @@ func (h *ProfileHandler) GetSubscriptions(c *gin.Context) {
 // @Security     BearerAuth
 // @Param        user_id  path  string  true  "ID пользователя, на которого подписываемся"
 // @Success      201
+// @Failure      400  {object}  response.ErrorBody  "нельзя подписаться на себя"
 // @Failure      401  {object}  response.ErrorBody
+// @Failure      409  {object}  response.ErrorBody  "подписка уже существует"
 // @Failure      500  {object}  response.ErrorBody
 // @Router       /social/profile/{user_id}/subscribe [post]
 func (h *ProfileHandler) Subscribe(c *gin.Context) {
@@ -186,6 +205,14 @@ func (h *ProfileHandler) Subscribe(c *gin.Context) {
 	targetId := c.Param("user_id")
 
 	if err := h.srvc.Subscribe(c.Request.Context(), userId, targetId); err != nil {
+		if errors.Is(err, domain.ErrSubscribeToSelf) {
+			response.BadRequest(c, err, "cannot subscribe to yourself", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "already subscribed", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed subscribe", h.logger)
 		return
 	}
@@ -203,6 +230,7 @@ func (h *ProfileHandler) Subscribe(c *gin.Context) {
 // @Param        user_id  path  string  true  "ID пользователя, от которого отписываемся"
 // @Success      204
 // @Failure      401  {object}  response.ErrorBody
+// @Failure      404  {object}  response.ErrorBody  "подписки нет"
 // @Failure      500  {object}  response.ErrorBody
 // @Router       /social/profile/{user_id}/unsubscribe [delete]
 func (h *ProfileHandler) Unsubscribe(c *gin.Context) {
@@ -215,6 +243,10 @@ func (h *ProfileHandler) Unsubscribe(c *gin.Context) {
 	targetId := c.Param("user_id")
 
 	if err := h.srvc.UnSubscribe(c.Request.Context(), userId, targetId); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "subscription not found", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed unsubscribe", h.logger)
 		return
 	}
@@ -232,8 +264,9 @@ func (h *ProfileHandler) Unsubscribe(c *gin.Context) {
 // @Param        user_id  path      string         true  "ID пользователя, на которого жалуемся"
 // @Param        request  body      dto.ReportDTO  true  "Причина жалобы"
 // @Success      201
-// @Failure      400  {object}  response.ErrorBody
+// @Failure      400  {object}  response.ErrorBody  "неверное тело или жалоба на себя"
 // @Failure      401  {object}  response.ErrorBody
+// @Failure      409  {object}  response.ErrorBody  "жалоба уже существует"
 // @Failure      500  {object}  response.ErrorBody
 // @Router       /social/profile/{user_id}/report [post]
 func (h *ProfileHandler) Report(c *gin.Context) {
@@ -252,6 +285,14 @@ func (h *ProfileHandler) Report(c *gin.Context) {
 	}
 
 	if err := h.srvc.Report(c.Request.Context(), userId, targetId, &req); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			response.NotFound(c, err, "user not found", h.logger)
+			return
+		}
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "report already exists", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed create profile report", h.logger)
 		return
 	}
@@ -259,6 +300,19 @@ func (h *ProfileHandler) Report(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
+// Block godoc
+// @Summary      Заблокировать пользователя
+// @Description  Блокирует указанного пользователя для текущего пользователя
+// @Tags         profile
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        user_id  path  string  true  "ID пользователя, которого блокируем"
+// @Success      200
+// @Failure      401  {object}  response.ErrorBody
+// @Failure      409  {object}  response.ErrorBody  "пользователь уже заблокирован"
+// @Failure      500  {object}  response.ErrorBody
+// @Router       /social/profile/{user_id}/block [post]
 func (h *ProfileHandler) Block(c *gin.Context) {
 	profRequestsTotal.Inc()
 	userID, err := middleware.GetUserID(c)
@@ -269,6 +323,10 @@ func (h *ProfileHandler) Block(c *gin.Context) {
 	targetID := c.Param("user_id")
 
 	if err := h.srvc.Block(c.Request.Context(), userID, targetID); err != nil {
+		if errors.Is(err, domain.ErrAlreadyExists) {
+			response.Conflict(c, err, "user already blocked", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed block user", h.logger)
 		return
 	}
