@@ -1,13 +1,13 @@
 package ws
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -15,10 +15,10 @@ import (
 type StreamHandler struct {
 	hub    *Hub
 	logger *zap.Logger
-	srvc   *services.StreamService
+	srvc   StreamService
 }
 
-func NewStreamHandler(hub *Hub, srvc *services.StreamService, logger *zap.Logger) *StreamHandler {
+func NewStreamHandler(hub *Hub, srvc StreamService, logger *zap.Logger) *StreamHandler {
 	return &StreamHandler{hub: hub, logger: logger, srvc: srvc}
 }
 
@@ -38,6 +38,10 @@ func (h *StreamHandler) SendStreamMessage(c *gin.Context) {
 
 	users, err := h.srvc.GetStreamUsers(c.Request.Context(), videoID)
 	if err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed get users", h.logger)
 		return
 	}
@@ -56,6 +60,10 @@ func (h *StreamHandler) SendStreamMessage(c *gin.Context) {
 	}
 
 	if err := h.srvc.SaveStreamMessage(c.Request.Context(), userID, videoID, &msg); err != nil {
+		if errors.Is(err, domain.ErrForbidden) {
+			response.Forbidden(c, err, "not enough rights", h.logger)
+			return
+		}
 		response.InternalServerError(c, err, "failed save stream message", h.logger)
 		return
 	}
