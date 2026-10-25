@@ -16,7 +16,7 @@ import (
 
 var comRequestsTotal = promauto.NewCounter(prometheus.CounterOpts{
 	Name: "com_requests_total",
-	Help: "Total number of auth requests",
+	Help: "Total number of com requests",
 })
 
 type CommentHandler struct {
