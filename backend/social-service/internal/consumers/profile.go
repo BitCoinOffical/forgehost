@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
-	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 )
@@ -19,10 +18,10 @@ const (
 type Consumer struct {
 	client  *kgo.Client
 	logger  *zap.Logger
-	service *services.ProfileService
+	service ProfileService
 }
 
-func NewConsumer(client *kgo.Client, logger *zap.Logger, service *services.ProfileService) *Consumer {
+func NewConsumer(client *kgo.Client, logger *zap.Logger, service ProfileService) *Consumer {
 	return &Consumer{client: client, logger: logger, service: service}
 }
 
@@ -34,12 +33,18 @@ func (k *Consumer) Run(ctx context.Context) <-chan error {
 			k.logger.Info("consumer started", zap.Int("num", i+1))
 			for {
 				fetches := k.client.PollFetches(ctx)
-				if fetErrs := fetches.Errors(); len(errs) > 0 {
-					for _, e := range fetErrs {
-						errs <- fmt.Errorf("k.client.PollFetches: %w", e.Err)
-						k.logger.Error("fetch error", zap.String("topic", e.Topic), zap.Int32("partition", e.Partition), zap.Error(e.Err))
-					}
-					continue
+				if fetches.IsClientClosed() {
+					k.logger.Error("consumer shut down", zap.String("error", "client closed"))
+					return
+				}
+				if ctx.Err() != nil {
+					k.logger.Info("consumer shut down by context")
+					return
+				}
+
+				for _, e := range fetches.Errors() {
+					errs <- fmt.Errorf("k.client.PollFetches: %w", e.Err)
+					k.logger.Error("fetch error", zap.String("topic", e.Topic), zap.Int32("partition", e.Partition), zap.Error(e.Err))
 				}
 
 				fetches.EachRecord(func(r *kgo.Record) {
@@ -63,7 +68,7 @@ func (k *Consumer) Run(ctx context.Context) <-chan error {
 
 	go func() {
 		wg.Wait()
-		defer close(errs)
+		close(errs)
 	}()
 
 	return errs
