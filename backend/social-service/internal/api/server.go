@@ -135,6 +135,7 @@ func (s *Server) Run() error {
 		social.GET("/ws/message/direct/:chat_id", s.ws.Msgs.SendMessageDirect)
 		social.GET("/ws/message/stream/:video_id", s.ws.Strms.SendStreamMessage)
 
+		social.POST("/streams/:video_id/join", s.ws.Strms.SaveStreamUser)
 		social.GET("/search")
 	}
 
