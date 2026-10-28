@@ -80,7 +80,7 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 		ps.topic_id,
 		(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
 		ps.user_id,
-		ps.image_url,
+		ps.image_id,
 		ps.description,
 		ps.views,
 		(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
