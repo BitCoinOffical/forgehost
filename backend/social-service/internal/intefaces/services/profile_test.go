@@ -17,7 +17,7 @@ func TestGetProfileByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -107,7 +107,7 @@ func TestSaveProfile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -178,7 +178,7 @@ func TestUpdateProfile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -305,7 +305,7 @@ func TestGetSubscriptions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -373,7 +373,7 @@ func TestGetSubscribers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -441,7 +441,7 @@ func TestSubscribe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -523,7 +523,7 @@ func TestUnSubscribe(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -595,7 +595,7 @@ func TestReport(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -685,7 +685,7 @@ func TestBlock(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockProfileRepo(ctrl)
 
-	profile := NewProfileService(repo)
+	profile := NewProfileService(repo, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
