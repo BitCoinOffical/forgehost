@@ -3,6 +3,7 @@ package consumers
 import (
 	"context"
 
+	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/seaweedfs"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
@@ -28,9 +29,9 @@ type Services struct {
 	service ProfileService
 }
 
-func NewServices(pool *pgxpool.Pool) *Services {
+func NewServices(pool *pgxpool.Pool, storefs *seaweedfs.Storage) *Services {
 	repo := postgres.NewProfileRepo(pool)
-	service := services.NewProfileService(repo)
+	service := services.NewProfileService(repo, storefs.PublicEndpoint)
 
 	return &Services{
 		service: service,
