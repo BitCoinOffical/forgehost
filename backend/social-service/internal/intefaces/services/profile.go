@@ -10,11 +10,12 @@ import (
 )
 
 type ProfileService struct {
-	repo ProfileRepo
+	repo           ProfileRepo
+	PublicEndpoint string
 }
 
-func NewProfileService(repo ProfileRepo) *ProfileService {
-	return &ProfileService{repo: repo}
+func NewProfileService(repo ProfileRepo, PublicEndpoint string) *ProfileService {
+	return &ProfileService{repo: repo, PublicEndpoint: PublicEndpoint}
 }
 
 func (s *ProfileService) GetProfileByID(ctx context.Context, id string) (*models.ProfileResponse, error) {
@@ -23,9 +24,12 @@ func (s *ProfileService) GetProfileByID(ctx context.Context, id string) (*models
 		return nil, fmt.Errorf("s.repo.GetProfileByID: %w", err)
 	}
 
+	posts := s.withImageURLs(fds)
+	prof.AvatarID = s.imageURL(prof.AvatarUrl)
+
 	resp := models.ProfileResponse{
 		Profile: *prof,
-		Posts:   fds,
+		Posts:   posts,
 	}
 
 	return &resp, nil
@@ -102,4 +106,19 @@ func (r *ProfileService) Block(ctx context.Context, userID, targetID string) err
 		return fmt.Errorf("r.repo.Block: %w", err)
 	}
 	return nil
+}
+
+func (s *ProfileService) imageURL(imageID *string) *string {
+	if imageID == nil {
+		return nil
+	}
+	url := s.PublicEndpoint + "/" + *imageID
+	return &url
+}
+
+func (s *ProfileService) withImageURLs(posts []models.FeedPost) []models.FeedPost {
+	for i := range posts {
+		posts[i].ImageURL = s.imageURL(posts[i].ImageID)
+	}
+	return posts
 }
