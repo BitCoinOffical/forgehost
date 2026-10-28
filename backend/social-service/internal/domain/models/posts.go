@@ -10,6 +10,7 @@ type FeedPost struct {
 	Username    *string   `db:"username"`
 	TopicName   *string   `db:"topic_title"`
 	AvatarURL   *string   `db:"avatar_url"`
+	ImageID     *string   `db:"image_id"`
 	ImageURL    *string   `db:"image_url"`
 	Description *string   `db:"description"`
 	PostID      string    `db:"post_id"`
@@ -25,7 +26,7 @@ type Post struct {
 	ID          string    `db:"id"`
 	TopicID     *int      `db:"topic_id"`
 	UserID      string    `db:"user_id"`
-	ImageURL    *string   `db:"image_url"`
+	ImageID     *string   `db:"image_id"`
 	Description *string   `db:"description"`
 	Views       int       `db:"views"`
 	IsDelete    bool      `db:"is_delete"`
