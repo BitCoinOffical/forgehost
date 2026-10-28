@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"context"
+	"mime/multipart"
 
+	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/seaweedfs"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/cache"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/postgres"
+	s3store "github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/s3"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/repo/store"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/intefaces/services"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,6 +17,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
+
+type UploaderService interface {
+	UploadImage(ctx context.Context, prefix, userID, ext, contentType string, file multipart.File) (string, error)
+}
 
 type ChatService interface {
 	CreateGroup(ctx context.Context, ownerID string, req *dto.CreateChatDTO) (string, error)
@@ -96,15 +103,16 @@ type Services struct {
 	coms    CommentsService
 	chat    ChatService
 	strm    StreamService
+	img     UploaderService
 }
 
-func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
+func NewServices(pool *pgxpool.Pool, rdb *redis.Client, storefs *seaweedfs.Storage) *Services {
 	profrepo := postgres.NewProfileRepo(pool)
-	profile := services.NewProfileService(profrepo)
+	profile := services.NewProfileService(profrepo, storefs.PublicEndpoint)
 
 	postrdb := cache.NewCache(rdb)
 	postrepo := postgres.NewPostsRepo(pool)
-	post := services.NewPostsService(postrepo, postrdb)
+	post := services.NewPostsService(postrepo, postrdb, storefs.PublicEndpoint)
 
 	comrepo := postgres.NewCommentsRepo(pool)
 	coms := services.NewCommentsService(comrepo)
@@ -116,7 +124,11 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client) *Services {
 	stramrepo := postgres.NewStreamRepo(pool)
 	strm := services.NewStreamService(store, stramrepo)
 
-	return &Services{profile: profile, post: post, coms: coms, chat: chat, strm: strm}
+	imgstore := s3store.NewS3Loader(storefs)
+	imgrepo := postgres.NewUploadRepo(pool)
+	img := services.NewUploaderService(imgrepo, imgstore, storefs.PublicEndpoint)
+
+	return &Services{profile: profile, post: post, coms: coms, chat: chat, strm: strm, img: img}
 }
 
 type Handlers struct {
@@ -125,6 +137,7 @@ type Handlers struct {
 	Comments *CommentHandler
 	Chats    *ChatHandler
 	Stream   *StreamHandler
+	Uploader *UploaderHandler
 }
 
 func NewHandlers(srvc *Services, logger *zap.Logger, cfg *oauth2.Config) *Handlers {
@@ -133,5 +146,6 @@ func NewHandlers(srvc *Services, logger *zap.Logger, cfg *oauth2.Config) *Handle
 	posts := NewPostHandler(srvc.post, logger)
 	chat := NewChatHandler(srvc.chat, logger)
 	stream := NewStreamHandler(logger, cfg, srvc.strm)
-	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat, Stream: stream}
+	uploader := NewUploaderHandler(srvc.img, logger)
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat, Stream: stream, Uploader: uploader}
 }
