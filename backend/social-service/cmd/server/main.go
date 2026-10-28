@@ -14,6 +14,7 @@ import (
 	mongodb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/mongo"
 	postgresdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/postgres"
 	redisdb "github.com/BitCoinOffical/forgehost/social-service/internal/adapters/redis"
+	"github.com/BitCoinOffical/forgehost/social-service/internal/adapters/seaweedfs"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/http/handlers"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
@@ -81,6 +82,19 @@ func main() {
 	}
 	logger.Info("postgress pool applied successfully")
 
+	storefs, err := seaweedfs.NewSeaweedfs(ctx, seaweedfs.S3Config{
+		Endpoint:       cfg.S3.Endpoint,
+		PublicEndpoint: cfg.S3.PublicEndpoint,
+		AccessKey:      cfg.S3.AccessKey,
+		SecretKey:      cfg.S3.SecretKey,
+		Bucket:         cfg.S3.Bucket,
+		Region:         cfg.S3.Region,
+	})
+	if err != nil {
+		logger.Fatal("seaweedfs failed", zap.Error(err))
+	}
+	logger.Info("seaweedfs applied successfully")
+
 	if err := migrations.RunMigrations(pool); err != nil {
 		logger.Fatal("failed run migrated", zap.Error(err))
 	}
@@ -117,7 +131,7 @@ func main() {
 	}
 	logger.Info("mongo applied successfully")
 
-	srv := consumers.NewServices(pool)
+	srv := consumers.NewServices(pool, storefs)
 	cons := consumers.NewConsumers(srv, client, logger)
 
 	go func() {
@@ -129,7 +143,7 @@ func main() {
 
 	manager := jwtpkg.NewManagerToken(cfg.App.Secret)
 	mdlwr := middleware.NewMiddleware(rate, logger, manager)
-	srvcs := handlers.NewServices(pool, cache)
+	srvcs := handlers.NewServices(pool, cache, storefs)
 	handlrs := handlers.NewHandlers(srvcs, logger, &oauth2.Config{
 		RedirectURL:  cfg.WebGoogle.WebRedirectURL,
 		ClientID:     cfg.WebGoogle.WebClientID,
