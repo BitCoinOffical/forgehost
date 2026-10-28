@@ -11,6 +11,7 @@ package store_mocks
 
 import (
 	context "context"
+	io "io"
 	reflect "reflect"
 	time "time"
 
@@ -19,6 +20,111 @@ import (
 	bson "go.mongodb.org/mongo-driver/v2/bson"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockUploadRepo is a mock of UploadRepo interface.
+type MockUploadRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockUploadRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockUploadRepoMockRecorder is the mock recorder for MockUploadRepo.
+type MockUploadRepoMockRecorder struct {
+	mock *MockUploadRepo
+}
+
+// NewMockUploadRepo creates a new mock instance.
+func NewMockUploadRepo(ctrl *gomock.Controller) *MockUploadRepo {
+	mock := &MockUploadRepo{ctrl: ctrl}
+	mock.recorder = &MockUploadRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUploadRepo) EXPECT() *MockUploadRepoMockRecorder {
+	return m.recorder
+}
+
+// CreateUpload mocks base method.
+func (m *MockUploadRepo) CreateUpload(ctx context.Context, imageID, userID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateUpload", ctx, imageID, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateUpload indicates an expected call of CreateUpload.
+func (mr *MockUploadRepoMockRecorder) CreateUpload(ctx, imageID, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUpload", reflect.TypeOf((*MockUploadRepo)(nil).CreateUpload), ctx, imageID, userID)
+}
+
+// MockS3 is a mock of S3 interface.
+type MockS3 struct {
+	ctrl     *gomock.Controller
+	recorder *MockS3MockRecorder
+	isgomock struct{}
+}
+
+// MockS3MockRecorder is the mock recorder for MockS3.
+type MockS3MockRecorder struct {
+	mock *MockS3
+}
+
+// NewMockS3 creates a new mock instance.
+func NewMockS3(ctrl *gomock.Controller) *MockS3 {
+	mock := &MockS3{ctrl: ctrl}
+	mock.recorder = &MockS3MockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockS3) EXPECT() *MockS3MockRecorder {
+	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockS3) Delete(ctx context.Context, imageID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, imageID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockS3MockRecorder) Delete(ctx, imageID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockS3)(nil).Delete), ctx, imageID)
+}
+
+// GetURL mocks base method.
+func (m *MockS3) GetURL(ctx context.Context, imageID string, ttl time.Duration) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetURL", ctx, imageID, ttl)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetURL indicates an expected call of GetURL.
+func (mr *MockS3MockRecorder) GetURL(ctx, imageID, ttl any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetURL", reflect.TypeOf((*MockS3)(nil).GetURL), ctx, imageID, ttl)
+}
+
+// Upload mocks base method.
+func (m *MockS3) Upload(ctx context.Context, key, contentType string, body io.ReadSeeker) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Upload", ctx, key, contentType, body)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Upload indicates an expected call of Upload.
+func (mr *MockS3MockRecorder) Upload(ctx, key, contentType, body any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockS3)(nil).Upload), ctx, key, contentType, body)
+}
 
 // MockCommentsRepo is a mock of CommentsRepo interface.
 type MockCommentsRepo struct {
