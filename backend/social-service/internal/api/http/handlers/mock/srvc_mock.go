@@ -11,12 +11,52 @@ package srvc_mocks
 
 import (
 	context "context"
+	multipart "mime/multipart"
 	reflect "reflect"
 
 	dto "github.com/BitCoinOffical/forgehost/social-service/internal/domain/dto"
 	models "github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	gomock "go.uber.org/mock/gomock"
 )
+
+// MockUploaderService is a mock of UploaderService interface.
+type MockUploaderService struct {
+	ctrl     *gomock.Controller
+	recorder *MockUploaderServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockUploaderServiceMockRecorder is the mock recorder for MockUploaderService.
+type MockUploaderServiceMockRecorder struct {
+	mock *MockUploaderService
+}
+
+// NewMockUploaderService creates a new mock instance.
+func NewMockUploaderService(ctrl *gomock.Controller) *MockUploaderService {
+	mock := &MockUploaderService{ctrl: ctrl}
+	mock.recorder = &MockUploaderServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockUploaderService) EXPECT() *MockUploaderServiceMockRecorder {
+	return m.recorder
+}
+
+// UploadImage mocks base method.
+func (m *MockUploaderService) UploadImage(ctx context.Context, prefix, userID, ext, contentType string, file multipart.File) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadImage", ctx, prefix, userID, ext, contentType, file)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UploadImage indicates an expected call of UploadImage.
+func (mr *MockUploaderServiceMockRecorder) UploadImage(ctx, prefix, userID, ext, contentType, file any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadImage", reflect.TypeOf((*MockUploaderService)(nil).UploadImage), ctx, prefix, userID, ext, contentType, file)
+}
 
 // MockChatService is a mock of ChatService interface.
 type MockChatService struct {
