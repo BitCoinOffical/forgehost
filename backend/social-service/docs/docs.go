@@ -2888,6 +2888,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/social/upload/avatar": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Загружает изображение для публикации. Поддерживаются JPEG, PNG и WebP. Максимальный размер — 10 МБ.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Загрузить изображение",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Файл изображения",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "ID загруженного изображения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный файл или неподдерживаемый формат",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Пользователь не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка загрузки изображения",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
+        "/social/upload/post": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Загружает изображение для публикации. Поддерживаются JPEG, PNG и WebP. Максимальный размер — 10 МБ.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "posts"
+                ],
+                "summary": "Загрузить изображение",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Файл изображения",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "ID загруженного изображения",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный файл или неподдерживаемый формат",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "401": {
+                        "description": "Пользователь не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка загрузки изображения",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorBody"
+                        }
+                    }
+                }
+            }
+        },
         "/social/ws/connect": {
             "get": {
                 "security": [
@@ -3305,11 +3415,10 @@ const docTemplate = `{
             "properties": {
                 "description": {
                     "type": "string",
-                    "maxLength": 4096
+                    "maxLength": 8192
                 },
-                "image_url": {
-                    "type": "string",
-                    "maxLength": 2048
+                "image_id": {
+                    "type": "string"
                 },
                 "topic_id": {
                     "type": "integer"
@@ -3488,9 +3597,8 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 4096
                 },
-                "image_url": {
-                    "type": "string",
-                    "maxLength": 2048
+                "image_id": {
+                    "type": "string"
                 },
                 "topic_id": {
                     "type": "integer"
@@ -3630,6 +3738,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "imageID": {
+                    "type": "string"
+                },
                 "imageURL": {
                     "type": "string"
                 },
@@ -3731,6 +3842,9 @@ const docTemplate = `{
         "models.Profile": {
             "type": "object",
             "properties": {
+                "avatarID": {
+                    "type": "string"
+                },
                 "avatarUrl": {
                     "type": "string"
                 },
