@@ -2,7 +2,6 @@ package services
 
 import (
 	"encoding/base64"
-	v2 "encoding/json/v2"
 	"errors"
 	"testing"
 	"time"
@@ -17,19 +16,12 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func makeCursor(t *testing.T, postID *string, createdAt *time.Time) string {
-	t.Helper()
-	raw, err := v2.Marshal(dto.CursorDTO{PostID: postID, CreatedAt: createdAt})
-	require.NoError(t, err)
-	return base64.URLEncoding.EncodeToString(raw)
-}
-
 func TestGetSubPosts(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
 
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -47,9 +39,17 @@ func TestGetSubPosts(t *testing.T) {
 			}{userID: "user_id"},
 			prepare: func() {
 				repo.EXPECT().GetSubPosts(gomock.Any(), "user_id").
-					Return([]models.FeedPost{{PostID: "1"}, {PostID: "2"}}, []models.FeedPost{{PostID: "3"}}, nil).Times(1)
+					Return(
+						[]models.FeedPost{{PostID: "1", ImageID: postImageID("1")}, {PostID: "2"}},
+						[]models.FeedPost{{PostID: "3", ImageID: postImageID("3")}},
+						nil,
+					).Times(1)
 			},
-			want:    []models.FeedPost{{PostID: "1"}, {PostID: "2"}, {PostID: "3"}},
+			want: []models.FeedPost{
+				{PostID: "1", ImageID: postImageID("1"), ImageURL: postImageURL("1")},
+				{PostID: "2"},
+				{PostID: "3", ImageID: postImageID("3"), ImageURL: postImageURL("3")},
+			},
 			success: true,
 		},
 		{
@@ -59,9 +59,17 @@ func TestGetSubPosts(t *testing.T) {
 			}{userID: "user_id"},
 			prepare: func() {
 				repo.EXPECT().GetSubPosts(gomock.Any(), "user_id").
-					Return([]models.FeedPost{{PostID: "1"}, {PostID: "2"}}, []models.FeedPost{{PostID: "2"}, {PostID: "3"}}, nil).Times(1)
+					Return(
+						[]models.FeedPost{{PostID: "1", ImageID: postImageID("1")}, {PostID: "2"}},
+						[]models.FeedPost{{PostID: "2", ImageID: postImageID("2")}, {PostID: "3"}},
+						nil,
+					).Times(1)
 			},
-			want:    []models.FeedPost{{PostID: "1"}, {PostID: "2"}, {PostID: "3"}},
+			want: []models.FeedPost{
+				{PostID: "1", ImageID: postImageID("1"), ImageURL: postImageURL("1")},
+				{PostID: "2", ImageID: postImageID("2"), ImageURL: postImageURL("2")},
+				{PostID: "3"},
+			},
 			success: true,
 		},
 		{
@@ -110,7 +118,7 @@ func TestGetGlobalPosts(t *testing.T) {
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
 
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	postIDStr := uuid.NewString()
 	postUUID := uuid.MustParse(postIDStr)
@@ -118,14 +126,14 @@ func TestGetGlobalPosts(t *testing.T) {
 
 	validCursor := makeCursor(t, &postIDStr, &createdAt)
 	noPostIDCursor := makeCursor(t, nil, &createdAt)
+	noCreatedAtCursor := makeCursor(t, &postIDStr, nil)
 	badUUIDCursor := makeCursor(t, strPtr("not_uuid"), &createdAt)
 	badJSONCursor := base64.URLEncoding.EncodeToString([]byte("{invalid"))
 	badBase64Cursor := "!!!"
 
 	postIDMatcher := gomock.Cond(func(p *uuid.UUID) bool { return p != nil && *p == postUUID })
 	createdAtMatcher := gomock.Cond(func(p *time.Time) bool { return p != nil && p.Equal(createdAt) })
-
-	feed := []models.FeedPost{{PostID: "1"}, {PostID: "2"}}
+	twoPosts := gomock.Cond(func(p []models.FeedPost) bool { return len(p) == 2 })
 
 	testCases := []struct {
 		caseName string
@@ -134,6 +142,7 @@ func TestGetGlobalPosts(t *testing.T) {
 		}
 		prepare func()
 		want    []models.FeedPost
+		wantErr error
 		success bool
 	}{
 		{
@@ -145,11 +154,11 @@ func TestGetGlobalPosts(t *testing.T) {
 				cache.EXPECT().GetGlobal(gomock.Any(), "").
 					Return(nil, domain.ErrNotFound).Times(1)
 				repo.EXPECT().GetGlobalPosts(gomock.Any(), gomock.Nil(), gomock.Nil()).
-					Return(feed, nil).Times(1)
-				cache.EXPECT().SetGlobal(gomock.Any(), feed, "").
+					Return(globalFeed(), nil).Times(1)
+				cache.EXPECT().SetGlobal(gomock.Any(), twoPosts, "").
 					Return(nil).Times(1)
 			},
-			want:    feed,
+			want:    globalFeedWithURLs(),
 			success: true,
 		},
 		{
@@ -159,9 +168,9 @@ func TestGetGlobalPosts(t *testing.T) {
 			}{cursor: ""},
 			prepare: func() {
 				cache.EXPECT().GetGlobal(gomock.Any(), "").
-					Return(feed, nil).Times(1)
+					Return(globalFeed(), nil).Times(1)
 			},
-			want:    feed,
+			want:    globalFeedWithURLs(),
 			success: true,
 		},
 		{
@@ -173,11 +182,11 @@ func TestGetGlobalPosts(t *testing.T) {
 				cache.EXPECT().GetGlobal(gomock.Any(), validCursor).
 					Return(nil, domain.ErrNotFound).Times(1)
 				repo.EXPECT().GetGlobalPosts(gomock.Any(), postIDMatcher, createdAtMatcher).
-					Return(feed, nil).Times(1)
-				cache.EXPECT().SetGlobal(gomock.Any(), feed, validCursor).
+					Return(globalFeed(), nil).Times(1)
+				cache.EXPECT().SetGlobal(gomock.Any(), twoPosts, validCursor).
 					Return(nil).Times(1)
 			},
-			want:    feed,
+			want:    globalFeedWithURLs(),
 			success: true,
 		},
 		{
@@ -187,9 +196,9 @@ func TestGetGlobalPosts(t *testing.T) {
 			}{cursor: validCursor},
 			prepare: func() {
 				cache.EXPECT().GetGlobal(gomock.Any(), validCursor).
-					Return(feed, nil).Times(1)
+					Return(globalFeed(), nil).Times(1)
 			},
-			want:    feed,
+			want:    globalFeedWithURLs(),
 			success: true,
 		},
 		{
@@ -214,6 +223,16 @@ func TestGetGlobalPosts(t *testing.T) {
 				cursor string
 			}{cursor: noPostIDCursor},
 			prepare: func() {},
+			wantErr: domain.ErrInvalidCursor,
+			success: false,
+		},
+		{
+			caseName: "cursor without created at",
+			data: struct {
+				cursor string
+			}{cursor: noCreatedAtCursor},
+			prepare: func() {},
+			wantErr: domain.ErrInvalidCursor,
 			success: false,
 		},
 		{
@@ -257,8 +276,8 @@ func TestGetGlobalPosts(t *testing.T) {
 				cache.EXPECT().GetGlobal(gomock.Any(), "").
 					Return(nil, domain.ErrNotFound).Times(1)
 				repo.EXPECT().GetGlobalPosts(gomock.Any(), gomock.Nil(), gomock.Nil()).
-					Return(feed, nil).Times(1)
-				cache.EXPECT().SetGlobal(gomock.Any(), feed, "").
+					Return(globalFeed(), nil).Times(1)
+				cache.EXPECT().SetGlobal(gomock.Any(), twoPosts, "").
 					Return(errors.New("set global cache error")).Times(1)
 			},
 			success: false,
@@ -275,8 +294,129 @@ func TestGetGlobalPosts(t *testing.T) {
 				assert.Equal(t, tc.want, got)
 			} else {
 				require.Error(t, err)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, err, tc.wantErr)
+				}
 				assert.Nil(t, got)
 			}
+		})
+	}
+}
+
+func TestGetPostByID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	repo := store_mocks.NewMockPostsRepo(ctrl)
+	cache := store_mocks.NewMockPostsCache(ctrl)
+
+	post := NewPostsService(repo, cache, testPublicEndpoint)
+
+	testCases := []struct {
+		caseName string
+		data     struct {
+			postID string
+		}
+		prepare func()
+		want    *models.FeedPost
+		wantErr error
+		success bool
+	}{
+		{
+			caseName: "get post by id",
+			data: struct {
+				postID string
+			}{postID: "post_id"},
+			prepare: func() {
+				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
+					Return(&models.FeedPost{PostID: "post_id"}, nil).Times(1)
+			},
+			want:    &models.FeedPost{PostID: "post_id"},
+			success: true,
+		},
+		{
+			caseName: "get post by id with image",
+			data: struct {
+				postID string
+			}{postID: "post_id"},
+			prepare: func() {
+				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
+					Return(&models.FeedPost{PostID: "post_id", ImageID: postImageID("1")}, nil).Times(1)
+			},
+			want:    &models.FeedPost{PostID: "post_id", ImageID: postImageID("1"), ImageURL: postImageURL("1")},
+			success: true,
+		},
+		{
+			caseName: "get not found post",
+			data: struct {
+				postID string
+			}{postID: "post_id"},
+			prepare: func() {
+				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
+					Return(nil, domain.ErrNotFound).Times(1)
+			},
+			wantErr: domain.ErrNotFound,
+			success: false,
+		},
+		{
+			caseName: "get post by id error",
+			data: struct {
+				postID string
+			}{postID: "post_id"},
+			prepare: func() {
+				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
+					Return(nil, errors.New("get post by id error")).Times(1)
+			},
+			success: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.caseName, func(t *testing.T) {
+			tc.prepare()
+
+			got, err := post.GetPostByID(t.Context(), tc.data.postID)
+			if tc.success {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
+			} else {
+				require.Error(t, err)
+				if tc.wantErr != nil {
+					require.ErrorIs(t, err, tc.wantErr)
+				}
+				assert.Nil(t, got)
+			}
+		})
+	}
+}
+
+func TestImageURL(t *testing.T) {
+	post := NewPostsService(nil, nil, testPublicEndpoint)
+
+	testCases := []struct {
+		caseName string
+		data     struct {
+			imageID *string
+		}
+		want *string
+	}{
+		{
+			caseName: "image url",
+			data: struct {
+				imageID *string
+			}{imageID: postImageID("1")},
+			want: postImageURL("1"),
+		},
+		{
+			caseName: "post without image",
+			data: struct {
+				imageID *string
+			}{imageID: nil},
+			want: nil,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.caseName, func(t *testing.T) {
+			assert.Equal(t, tc.want, post.imageURL(tc.data.imageID))
 		})
 	}
 }
@@ -286,7 +426,7 @@ func TestGetTopics(t *testing.T) {
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
 
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -342,8 +482,7 @@ func TestGetTopicByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -415,8 +554,7 @@ func TestCreateTopic(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -491,8 +629,7 @@ func TestDeleteTopic(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -573,8 +710,7 @@ func TestReportTopic(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -663,15 +799,14 @@ func TestCreatePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
 		data     struct {
 			userID      string
 			topicID     int
-			imageURL    string
+			imageID     string
 			description string
 		}
 		prepare func()
@@ -683,15 +818,15 @@ func TestCreatePost(t *testing.T) {
 			data: struct {
 				userID      string
 				topicID     int
-				imageURL    string
+				imageID     string
 				description string
-			}{userID: "user_id", topicID: 3, imageURL: "https://image.test/1.png", description: "description"},
+			}{userID: "user_id", topicID: 3, imageID: "image-id", description: "description"},
 			prepare: func() {
 				var topicID = 3
 				repo.EXPECT().CreatePost(gomock.Any(), &models.Post{
 					TopicID:     &topicID,
 					UserID:      "user_id",
-					ImageURL:    strPtr("https://image.test/1.png"),
+					ImageID:     strPtr("image-id"),
 					Description: strPtr("description"),
 				}).Return(nil).Times(1)
 			},
@@ -702,9 +837,9 @@ func TestCreatePost(t *testing.T) {
 			data: struct {
 				userID      string
 				topicID     int
-				imageURL    string
+				imageID     string
 				description string
-			}{userID: "user_id", topicID: 3, imageURL: "https://image.test/1.png", description: "description"},
+			}{userID: "user_id", topicID: 3, imageID: "image-id", description: "description"},
 			prepare: func() {
 				repo.EXPECT().CreatePost(gomock.Any(), gomock.Any()).
 					Return(domain.ErrAlreadyExists).Times(1)
@@ -717,9 +852,9 @@ func TestCreatePost(t *testing.T) {
 			data: struct {
 				userID      string
 				topicID     int
-				imageURL    string
+				imageID     string
 				description string
-			}{userID: "user_id", topicID: 3, imageURL: "https://image.test/1.png", description: "description"},
+			}{userID: "user_id", topicID: 3, imageID: "image-id", description: "description"},
 			prepare: func() {
 				repo.EXPECT().CreatePost(gomock.Any(), gomock.Any()).
 					Return(errors.New("create post error")).Times(1)
@@ -734,7 +869,7 @@ func TestCreatePost(t *testing.T) {
 
 			req := dto.CreatePostDTO{
 				TopicID:     &tc.data.topicID,
-				ImageUrl:    tc.data.imageURL,
+				ImageID:     tc.data.imageID,
 				Description: tc.data.description,
 			}
 			err := post.CreatePost(t.Context(), &req, tc.data.userID)
@@ -754,8 +889,7 @@ func TestUpdatePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -763,7 +897,7 @@ func TestUpdatePost(t *testing.T) {
 			postID      string
 			userID      string
 			topicID     *int
-			imageURL    *string
+			imageID     *string
 			description *string
 		}
 		prepare func()
@@ -777,20 +911,20 @@ func TestUpdatePost(t *testing.T) {
 				postID      string
 				userID      string
 				topicID     *int
-				imageURL    *string
+				imageID     *string
 				description *string
-			}{postID: "post_id", userID: "user_id", topicID: intPtr(3), imageURL: strPtr("new_url"), description: strPtr("new_description")},
+			}{postID: "post_id", userID: "user_id", topicID: intPtr(3), imageID: strPtr("new_id"), description: strPtr("new_description")},
 			prepare: func() {
 				var topicID = 3
 				repo.EXPECT().BuildUpdatePost(gomock.Any(), &models.Post{
 					ID:          "post_id",
 					TopicID:     &topicID,
 					UserID:      "user_id",
-					ImageURL:    strPtr("new_url"),
+					ImageID:     strPtr("new_id"),
 					Description: strPtr("new_description"),
-				}).Return(&models.Post{UserID: "user_id", ImageURL: strPtr("new_url"), Description: strPtr("new_description")}, nil).Times(1)
+				}).Return(&models.Post{UserID: "user_id", ImageID: strPtr("new_id"), Description: strPtr("new_description")}, nil).Times(1)
 			},
-			want:    &models.Post{UserID: "user_id", ImageURL: strPtr("new_url"), Description: strPtr("new_description")},
+			want:    &models.Post{UserID: "user_id", ImageID: strPtr("new_id"), Description: strPtr("new_description")},
 			success: true,
 		},
 		{
@@ -799,7 +933,7 @@ func TestUpdatePost(t *testing.T) {
 				postID      string
 				userID      string
 				topicID     *int
-				imageURL    *string
+				imageID     *string
 				description *string
 			}{postID: "post_id", userID: "user_id", description: strPtr("new_description")},
 			prepare: func() {
@@ -818,7 +952,7 @@ func TestUpdatePost(t *testing.T) {
 				postID      string
 				userID      string
 				topicID     *int
-				imageURL    *string
+				imageID     *string
 				description *string
 			}{postID: "post_id", userID: "user_id", description: strPtr("new_description")},
 			prepare: func() {
@@ -834,7 +968,7 @@ func TestUpdatePost(t *testing.T) {
 				postID      string
 				userID      string
 				topicID     *int
-				imageURL    *string
+				imageID     *string
 				description *string
 			}{postID: "post_id", userID: "user_id", description: strPtr("new_description")},
 			prepare: func() {
@@ -851,83 +985,10 @@ func TestUpdatePost(t *testing.T) {
 
 			req := dto.UpdatePostDTO{
 				TopicID:     tc.data.topicID,
-				ImageUrl:    tc.data.imageURL,
+				ImageID:     tc.data.imageID,
 				Description: tc.data.description,
 			}
 			got, err := post.UpdatePost(t.Context(), &req, tc.data.postID, tc.data.userID)
-			if tc.success {
-				require.NoError(t, err)
-				assert.Equal(t, tc.want, got)
-			} else {
-				require.Error(t, err)
-				if tc.wantErr != nil {
-					require.ErrorIs(t, err, tc.wantErr)
-				}
-				assert.Nil(t, got)
-			}
-		})
-	}
-}
-
-func TestGetPostByID(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	repo := store_mocks.NewMockPostsRepo(ctrl)
-	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
-
-	testCases := []struct {
-		caseName string
-		data     struct {
-			postID string
-		}
-		prepare func()
-		want    *models.FeedPost
-		wantErr error
-		success bool
-	}{
-		{
-			caseName: "get post by id",
-			data: struct {
-				postID string
-			}{postID: "post_id"},
-			prepare: func() {
-				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
-					Return(&models.FeedPost{PostID: "post_id"}, nil).Times(1)
-			},
-			want:    &models.FeedPost{PostID: "post_id"},
-			success: true,
-		},
-		{
-			caseName: "get not found post",
-			data: struct {
-				postID string
-			}{postID: "post_id"},
-			prepare: func() {
-				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
-					Return(nil, domain.ErrNotFound).Times(1)
-			},
-			wantErr: domain.ErrNotFound,
-			success: false,
-		},
-		{
-			caseName: "get post by id error",
-			data: struct {
-				postID string
-			}{postID: "post_id"},
-			prepare: func() {
-				repo.EXPECT().GetPostByID(gomock.Any(), "post_id").
-					Return(nil, errors.New("get post by id error")).Times(1)
-			},
-			success: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.caseName, func(t *testing.T) {
-			tc.prepare()
-
-			got, err := post.GetPostByID(t.Context(), tc.data.postID)
 			if tc.success {
 				require.NoError(t, err)
 				assert.Equal(t, tc.want, got)
@@ -946,8 +1007,7 @@ func TestViewPost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -1015,8 +1075,7 @@ func TestReportPost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -1095,8 +1154,7 @@ func TestDeletePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -1168,8 +1226,7 @@ func TestLikePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
@@ -1241,8 +1298,7 @@ func TestUnlikePost(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	repo := store_mocks.NewMockPostsRepo(ctrl)
 	cache := store_mocks.NewMockPostsCache(ctrl)
-
-	post := NewPostsService(repo, cache)
+	post := NewPostsService(repo, cache, testPublicEndpoint)
 
 	testCases := []struct {
 		caseName string
