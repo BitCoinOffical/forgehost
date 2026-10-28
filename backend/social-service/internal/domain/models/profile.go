@@ -9,6 +9,7 @@ type Profile struct {
 	UserName      *string   `db:"username"`
 	Bio           *string   `db:"bio"`
 	AvatarUrl     *string   `db:"avatar_url"`
+	AvatarID      *string   `db:"avatar_id"`
 	Subscribers   int       `db:"subscribers"`
 	Subscriptions int       `db:"subscriptions"`
 	Posts         int       `db:"posts"`
