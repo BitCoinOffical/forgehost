@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/middleware"
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
@@ -138,7 +139,16 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		return
 	}
 
+	if req.ImageID == "" && strings.TrimSpace(req.Description) == "" {
+		response.BadRequest(c, domain.ErrInvalidRequest, "image or description is required", h.logger)
+		return
+	}
+
 	if err := h.srvc.CreatePost(c.Request.Context(), &req, id); err != nil {
+		if errors.Is(err, domain.ErrInvalidImage) {
+			response.BadRequest(c, err, "invalid image", h.logger)
+			return
+		}
 		if errors.Is(err, domain.ErrAlreadyExists) {
 			response.Conflict(c, err, "such a post already exists", h.logger)
 			return
