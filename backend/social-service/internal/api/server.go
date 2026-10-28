@@ -136,6 +136,10 @@ func (s *Server) Run() error {
 		social.GET("/ws/message/stream/:video_id", s.ws.Strms.SendStreamMessage)
 
 		social.POST("/streams/:video_id/join", s.ws.Strms.SaveStreamUser)
+
+		social.POST("/upload/post", s.h.Uploader.UploadPostImage)
+		social.POST("/upload/avatar", s.h.Uploader.UploadAvatarImage)
+
 		social.GET("/search")
 	}
 

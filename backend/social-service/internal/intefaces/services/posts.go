@@ -15,12 +15,13 @@ import (
 )
 
 type PostsService struct {
-	repo  PostsRepo
-	cache PostsCache
+	repo           PostsRepo
+	cache          PostsCache
+	PublicEndpoint string
 }
 
-func NewPostsService(repo PostsRepo, cache PostsCache) *PostsService {
-	return &PostsService{repo: repo, cache: cache}
+func NewPostsService(repo PostsRepo, cache PostsCache, PublicEndpoint string) *PostsService {
+	return &PostsService{repo: repo, cache: cache, PublicEndpoint: PublicEndpoint}
 }
 
 func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.FeedPost, error) {
@@ -37,15 +38,17 @@ func (s *PostsService) GetSubPosts(ctx context.Context, id string) ([]models.Fee
 		m[data.PostID] = data
 	}
 
-	result := make([]models.FeedPost, 0, len(m))
+	posts := make([]models.FeedPost, 0, len(m))
 	for _, p := range m {
-		result = append(result, p)
+		posts = append(posts, p)
 	}
 
-	return result, nil
+	res := s.withImageURLs(posts)
+
+	return res, nil
 }
 
-func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]models.FeedPost, error) {
+func (s *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]models.FeedPost, error) {
 	var req dto.CursorDTO
 	var postID *uuid.UUID
 	if cursor != "" {
@@ -58,7 +61,7 @@ func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]mod
 			return nil, fmt.Errorf("v2.Unmarshal: %w", err)
 		}
 
-		if req.PostID == nil || *req.PostID == "" {
+		if req.PostID == nil || *req.PostID == "" || req.CreatedAt == nil {
 			return nil, domain.ErrInvalidCursor
 		}
 
@@ -70,56 +73,74 @@ func (r *PostsService) GetGlobalPosts(ctx context.Context, cursor string) ([]mod
 		postID = &id
 	}
 
-	posts, err := r.cache.GetGlobal(ctx, cursor)
+	posts, err := s.cache.GetGlobal(ctx, cursor)
 	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return nil, fmt.Errorf("r.cache.GetCandidates: %w", err)
+		return nil, fmt.Errorf("s.cache.GetCandidates: %w", err)
 	}
 	if posts != nil {
-		return posts, nil
+		res := s.withImageURLs(posts)
+		return res, nil
 	}
 
-	posts, err = r.repo.GetGlobalPosts(ctx, postID, req.CreatedAt)
+	posts, err = s.repo.GetGlobalPosts(ctx, postID, req.CreatedAt)
 	if err != nil {
-		return nil, fmt.Errorf("r.repo.GetGlobalPosts: %w", err)
+		return nil, fmt.Errorf("s.repo.GetGlobalPosts: %w", err)
 	}
 
-	if err := r.cache.SetGlobal(ctx, posts, cursor); err != nil {
-		return nil, fmt.Errorf("r.cache.SetGlobal: %w", err)
+	if err := s.cache.SetGlobal(ctx, posts, cursor); err != nil {
+		return nil, fmt.Errorf("s.cache.SetGlobal: %w", err)
 	}
 
-	return posts, nil
+	res := s.withImageURLs(posts)
+
+	return res, nil
 }
 
-func (r *PostsService) GetTopics(ctx context.Context) ([]models.Topics, error) {
-	tpcs, err := r.repo.GetTopics(ctx)
+func (s *PostsService) imageURL(imageID *string) *string {
+	if imageID == nil {
+		return nil
+	}
+	url := s.PublicEndpoint + "/" + *imageID
+	return &url
+}
+
+func (s *PostsService) withImageURLs(posts []models.FeedPost) []models.FeedPost {
+	for i := range posts {
+		posts[i].ImageURL = s.imageURL(posts[i].ImageID)
+	}
+	return posts
+}
+
+func (s *PostsService) GetTopics(ctx context.Context) ([]models.Topics, error) {
+	tpcs, err := s.repo.GetTopics(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("r.repo.GetTopics: %w", err)
+		return nil, fmt.Errorf("s.repo.GetTopics: %w", err)
 	}
 	return tpcs, nil
 }
 
-func (r *PostsService) GetTopicByID(ctx context.Context, id string) (*models.Topics, error) {
-	topic, err := r.repo.GetTopicsByID(ctx, id)
+func (s *PostsService) GetTopicByID(ctx context.Context, id string) (*models.Topics, error) {
+	topic, err := s.repo.GetTopicsByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("r.repo.GetTopicsByID: %w", err)
+		return nil, fmt.Errorf("s.repo.GetTopicsByID: %w", err)
 	}
 	return topic, nil
 }
 
-func (r *PostsService) CreateTopic(ctx context.Context, userID string, req *dto.CreateTopicDTO) error {
+func (s *PostsService) CreateTopic(ctx context.Context, userID string, req *dto.CreateTopicDTO) error {
 	topic := models.Topics{
 		UserID: userID,
 		Title:  req.Title,
 	}
 
-	if err := r.repo.CreateTopic(ctx, &topic); err != nil {
-		return fmt.Errorf("r.repo.CreateTopic: %w", err)
+	if err := s.repo.CreateTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("s.repo.CreateTopic: %w", err)
 	}
 
 	return nil
 }
 
-func (r *PostsService) DeleteTopic(ctx context.Context, strTopicID, userID string) error {
+func (s *PostsService) DeleteTopic(ctx context.Context, strTopicID, userID string) error {
 	topicID, err := strconv.Atoi(strTopicID)
 	if err != nil {
 		return fmt.Errorf("strconv.Atoi: %w", err)
@@ -128,14 +149,14 @@ func (r *PostsService) DeleteTopic(ctx context.Context, strTopicID, userID strin
 		ID:     topicID,
 		UserID: userID,
 	}
-	if err := r.repo.DeleteTopic(ctx, &topic); err != nil {
-		return fmt.Errorf("r.repo.DeleteTopic: %w", err)
+	if err := s.repo.DeleteTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("s.repo.DeleteTopic: %w", err)
 	}
 
 	return nil
 }
 
-func (r *PostsService) ReportTopic(ctx context.Context, userID, strTopicID string, req *dto.ReportTopicDTO) error {
+func (s *PostsService) ReportTopic(ctx context.Context, userID, strTopicID string, req *dto.ReportTopicDTO) error {
 	topicID, err := strconv.Atoi(strTopicID)
 	if err != nil {
 		return fmt.Errorf("strconv.Atoi: %w", err)
@@ -145,47 +166,48 @@ func (r *PostsService) ReportTopic(ctx context.Context, userID, strTopicID strin
 		TopicID: topicID,
 		Cause:   req.Cause,
 	}
-	if err := r.repo.ReportTopic(ctx, &topic); err != nil {
-		return fmt.Errorf("r.repo.DeleteTopic: %w", err)
+	if err := s.repo.ReportTopic(ctx, &topic); err != nil {
+		return fmt.Errorf("s.repo.DeleteTopic: %w", err)
 	}
 
 	return nil
 }
 
-func (r *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, userID string) error {
+func (s *PostsService) CreatePost(ctx context.Context, req *dto.CreatePostDTO, userID string) error {
 	post := models.Post{
 		TopicID:     req.TopicID,
 		UserID:      userID,
-		ImageURL:    &req.ImageUrl,
+		ImageID:     &req.ImageID,
 		Description: &req.Description,
 	}
-	if err := r.repo.CreatePost(ctx, &post); err != nil {
-		return fmt.Errorf("r.repo.CreatePost: %w", err)
+	if err := s.repo.CreatePost(ctx, &post); err != nil {
+		return fmt.Errorf("s.repo.CreatePost: %w", err)
 	}
 
 	return nil
 }
 
-func (r *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, postID, userID string) (*models.Post, error) {
+func (s *PostsService) UpdatePost(ctx context.Context, req *dto.UpdatePostDTO, postID, userID string) (*models.Post, error) {
 	post := models.Post{
 		ID:          postID,
 		TopicID:     req.TopicID,
-		ImageURL:    req.ImageUrl,
+		ImageID:     req.ImageID,
 		Description: req.Description,
 		UserID:      userID,
 	}
-	res, err := r.repo.BuildUpdatePost(ctx, &post)
+	res, err := s.repo.BuildUpdatePost(ctx, &post)
 	if err != nil {
-		return nil, fmt.Errorf("r.repo.BuildUpdatePost: %w", err)
+		return nil, fmt.Errorf("s.repo.BuildUpdatePost: %w", err)
 	}
 	return res, nil
 }
 
-func (r *PostsService) GetPostByID(ctx context.Context, postID string) (*models.FeedPost, error) {
-	post, err := r.repo.GetPostByID(ctx, postID)
+func (s *PostsService) GetPostByID(ctx context.Context, postID string) (*models.FeedPost, error) {
+	post, err := s.repo.GetPostByID(ctx, postID)
 	if err != nil {
-		return nil, fmt.Errorf("r.repo.GetPostById: %w", err)
+		return nil, fmt.Errorf("s.repo.GetPostById: %w", err)
 	}
+	post.ImageURL = s.imageURL(post.ImageID)
 	return post, nil
 }
 

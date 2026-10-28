@@ -7,3 +7,11 @@ resource "kafka_topic" "name" {
         "retention.ms" = 7 * 24 * 60 * 60 * 10000 //7 days
     }
 }
+
+resource "aws_s3_bucket" "main" {
+  bucket = "forgehost-dev"
+  tags = {
+    Name        = "Forgehost"
+    Environment = "Dev"
+  }
+}

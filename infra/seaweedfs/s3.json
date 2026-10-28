@@ -1,0 +1,11 @@
+{
+  "identities": [
+    {
+      "name": "forgehost",
+      "credentials": [
+        { "accessKey": "ZPDuKHD1H2C+2n+rS7lxn3fkzGPoOdMAKXer6HKv2p0=", "secretKey": "jX5TFGwLxZ0e7AdZgqoZkME2ol+jw0OvOpoos1saEz4=" }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

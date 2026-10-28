@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS posts(
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     topic_id BIGINT NULL,
     user_id UUID NOT NULL,
-    image_url TEXT,
+    image_id TEXT,
     description VARCHAR,
     views INTEGER DEFAULT 0,
 
@@ -79,6 +79,17 @@ CREATE TABLE IF NOT EXISTS posts(
 
     FOREIGN KEY (user_id) REFERENCES profiles(user_id),
     FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS uploads(
+    image_id TEXT PRIMARY KEY,
+    user_id UUID NOT NULL,
+    attached BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+
+    FOREIGN KEY (user_id) REFERENCES profiles(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS comments(

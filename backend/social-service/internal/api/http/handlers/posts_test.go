@@ -205,15 +205,18 @@ func TestCreatePostHandler(t *testing.T) {
 		{
 			caseName: "create post with image and topic",
 			data: chatInput{
-				body:   `{"image_url":"https://img.test/1.png","description":"d","topic_id":5}`,
+				body:   `{"image_id":"post/1.png","description":"d","topic_id":5}`,
 				userID: userClaims("user-id"),
 			},
 			prepare: func() {
-				srvc.EXPECT().CreatePost(gomock.Any(), gomock.Any(), "user-id").
+				srvc.EXPECT().
+					CreatePost(gomock.Any(), gomock.Any(), "user-id").
 					DoAndReturn(func(_ context.Context, req *dto.CreatePostDTO, _ string) error {
-						assert.Equal(t, "https://img.test/1.png", req.ImageUrl)
+						assert.Equal(t, "post/1.png", req.ImageID)
+
 						require.NotNil(t, req.TopicID)
 						assert.Equal(t, 5, *req.TopicID)
+
 						return nil
 					}).Times(1)
 			},
@@ -232,16 +235,20 @@ func TestCreatePostHandler(t *testing.T) {
 			status:   http.StatusBadRequest,
 		},
 		{
-			caseName: "image url over http",
-			data:     chatInput{body: `{"image_url":"http://img.test/1.png"}`, userID: userClaims("user-id")},
-			prepare:  func() {},
-			status:   http.StatusBadRequest,
-		},
-		{
-			caseName: "image url javascript scheme",
-			data:     chatInput{body: `{"image_url":"javascript:alert(1)"}`, userID: userClaims("user-id")},
-			prepare:  func() {},
-			status:   http.StatusBadRequest,
+			caseName: "invalid image ID",
+			data: chatInput{
+				body:   `{"image_id":"javascript:alert(1)","description":"d"}`,
+				userID: userClaims("user-id"),
+			},
+			prepare: func() {
+				srvc.EXPECT().
+					CreatePost(gomock.Any(), gomock.Any(), "user-id").
+					DoAndReturn(func(_ context.Context, req *dto.CreatePostDTO, _ string) error {
+						assert.Equal(t, "javascript:alert(1)", req.ImageID)
+						return domain.ErrInvalidImage
+					}).Times(1)
+			},
+			status: http.StatusBadRequest,
 		},
 		{
 			caseName: "topic id is zero",
@@ -251,7 +258,7 @@ func TestCreatePostHandler(t *testing.T) {
 		},
 		{
 			caseName: "description too long",
-			data:     chatInput{body: `{"description":"` + strings.Repeat("a", 4097) + `"}`, userID: userClaims("user-id")},
+			data:     chatInput{body: `{"description":"` + strings.Repeat("a", 9097) + `"}`, userID: userClaims("user-id")},
 			prepare:  func() {},
 			status:   http.StatusBadRequest,
 		},
@@ -597,7 +604,7 @@ func TestUpdatePostHandler(t *testing.T) {
 					DoAndReturn(func(_ context.Context, req *dto.UpdatePostDTO, _, _ string) (*models.Post, error) {
 						require.NotNil(t, req.Description)
 						assert.Equal(t, "new", *req.Description)
-						assert.Nil(t, req.ImageUrl)
+						assert.Nil(t, req.ImageID)
 						assert.Nil(t, req.TopicID)
 						return &models.Post{ID: "post-id"}, nil
 					}).Times(1)
@@ -607,12 +614,6 @@ func TestUpdatePostHandler(t *testing.T) {
 		{
 			caseName: "invalid request body",
 			data:     chatInput{body: `{invalid`, userID: userClaims("user-id")},
-			prepare:  func() {},
-			status:   http.StatusBadRequest,
-		},
-		{
-			caseName: "image url over http",
-			data:     chatInput{body: `{"image_url":"http://img.test/1.png"}`, userID: userClaims("user-id")},
 			prepare:  func() {},
 			status:   http.StatusBadRequest,
 		},

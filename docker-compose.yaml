@@ -215,6 +215,15 @@ services:
       - prometheus-data:/prometheus
     depends_on:
       - node-exporter
+      
+  seaweedfs:
+    image: chrislusf/seaweedfs
+    command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
 
 volumes:
   postgres_auth_data:

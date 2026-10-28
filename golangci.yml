@@ -1,0 +1,99 @@
+version: 2
+
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - internal/grpc/handlers/gen
+    - internal/grpc/handlers/proto
+    - .dev
+    - bin
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.pb\\.gw\\.go$"
+    - ".*_mock\\.go$"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errcheck
+    - goconst
+    - gocritic
+    - gocyclo
+    - mnd
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    goimports:
+      local-prefixes: github.com/BitCoinOffical/forgehost
+    gci:
+      local-prefixes: github.com/BitCoinOffical/forgehost
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    goconst:
+      min-len: 3
+      min-occurrences: 2
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport
+        - hugeParam
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - wrapperFunc
+    govet:
+      check-shadowing: true
+      enable-all: true
+    lll:
+      line-length: 120
+    misspell:
+      locale: US
+    nolintlint:
+      allow-leading-space: true
+      allow-unused: false
+      require-explanation: false
+      require-specific: false
+    mnd:
+      checks: argument,case,condition,operation,return,assign
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - mnd
+        - gocyclo
+    - path: internal/grpc/handlers/gen
+      linters:
+        - all
+    - path: ".*\\.pb\\.go$"
+      linters:
+        - all
+    - path: ".*\\.pb\\.gw\\.go$"
+      linters:
+        - all
+    - path: ".*_mock\\.go$"
+      linters:
+        - all
+  max-issues-per-linter: 0
+  max-same-issues: 0

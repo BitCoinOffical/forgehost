@@ -18,6 +18,8 @@ var ErrSubscribeToSelf = errors.New("cannot subscribe to yourself")
 var ErrReportToSelf = errors.New("cannot report to yourself")
 var ErrBlockToSelf = errors.New("cannot block to yourself")
 var ErrInvalidCursor = errors.New("invalid cursor")
+var ErrInvalidImage = errors.New("invalid image")
+var ErrInvalidRequest = errors.New("invalid request")
 
 // resend
 var ErrToManyRequest = errors.New("to many request")

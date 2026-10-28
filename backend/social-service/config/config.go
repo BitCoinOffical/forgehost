@@ -20,6 +20,7 @@ type Config struct {
 	Redis     RedisConfig
 	Mongo     MongoConfig
 	App       AppConfig
+	S3        S3Config
 }
 
 type KafkaConfig struct {
@@ -48,6 +49,15 @@ type RedisConfig struct {
 	RDBLimiterDB int    `env:"RATE_RDB_DB,required"`
 
 	RDBPass string `env:"RDB_PASS,required"`
+}
+
+type S3Config struct {
+	Endpoint       string `env:"S3_ENDPOINT,required"`
+	PublicEndpoint string `env:"S3_PUBLIC_URL,required"`
+	AccessKey      string `env:"S3_ACCESS_KEY,required"`
+	SecretKey      string `env:"S3_SECRET_KEY,required"`
+	Bucket         string `env:"S3_BUCKET,required"`
+	Region         string `env:"S3_REGION,required"`
 }
 
 type MongoConfig struct {
@@ -81,6 +91,10 @@ func NewLoad() (*Config, error) {
 	}
 
 	if err := env.Parse(&cfg.Redis); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.S3); err != nil {
 		return nil, err
 	}
 

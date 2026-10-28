@@ -2,12 +2,23 @@ package services
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain/models"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
+
+type UploadRepo interface {
+	CreateUpload(ctx context.Context, imageID string, userID string) error
+}
+
+type S3 interface {
+	Delete(ctx context.Context, imageID string) error
+	GetURL(ctx context.Context, imageID string, ttl time.Duration) (string, error)
+	Upload(ctx context.Context, key string, contentType string, body io.ReadSeeker) error
+}
 
 type CommentsRepo interface {
 	ListComments(ctx context.Context, postId string) ([]models.FeedComments, error)

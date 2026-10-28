@@ -297,5 +297,24 @@ func channelOf(t *testing.T, pool *pgxpool.Pool, userID string) *string {
 	return ch
 }
 
-func newChannelID() string { return "UC" + uuid.NewString()[:22] }
-func newVideoID() string   { return "vid_" + uuid.NewString()[:8] }
+func newChannelID() string {
+	return "UC" + uuid.NewString()[:22]
+}
+
+func newVideoID() string {
+	return "vid_" + uuid.NewString()[:8]
+}
+
+func seedUpload(t *testing.T, pool *pgxpool.Pool, imageID, userID string) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(),
+		`INSERT INTO uploads (image_id, user_id) VALUES ($1, $2)`, imageID, userID)
+	require.NoError(t, err)
+}
+func postIDs(posts []models.FeedPost) []string {
+	ids := make([]string, 0, len(posts))
+	for _, p := range posts {
+		ids = append(ids, p.PostID)
+	}
+	return ids
+}

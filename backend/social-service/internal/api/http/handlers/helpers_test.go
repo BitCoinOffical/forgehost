@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -82,4 +84,91 @@ func serveChat(t *testing.T, method, route, url string, in chatInput, h gin.Hand
 
 func strPtr(s string) *string {
 	return &s
+}
+
+type uploadImageInput struct {
+	userID   any
+	filename string
+	file     []byte
+}
+
+func serveUploadPostImage(
+	t *testing.T,
+	handler *UploaderHandler,
+	data uploadImageInput,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	body := &bytes.Buffer{}
+	form := multipart.NewWriter(body)
+
+	if data.file != nil {
+		filename := data.filename
+		if filename == "" {
+			filename = "image.png"
+		}
+
+		part, err := form.CreateFormFile("image", filename)
+		require.NoError(t, err)
+
+		_, err = part.Write(data.file)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, form.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/posts/image", body)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	if data.userID != nil {
+		c.Set("user_claims", data.userID)
+	}
+
+	handler.UploadPostImage(c)
+
+	return w
+}
+func serveAvatarPostImage(
+	t *testing.T,
+	handler *UploaderHandler,
+	data uploadImageInput,
+) *httptest.ResponseRecorder {
+	t.Helper()
+
+	body := &bytes.Buffer{}
+	form := multipart.NewWriter(body)
+
+	if data.file != nil {
+		filename := data.filename
+		if filename == "" {
+			filename = "image.png"
+		}
+
+		part, err := form.CreateFormFile("image", filename)
+		require.NoError(t, err)
+
+		_, err = part.Write(data.file)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, form.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/posts/image", body)
+	req.Header.Set("Content-Type", form.FormDataContentType())
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	if data.userID != nil {
+		c.Set("user_claims", data.userID)
+	}
+
+	handler.UploadAvatarImage(c)
+
+	return w
 }

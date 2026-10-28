@@ -13,14 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func postIDs(posts []models.FeedPost) []string {
-	ids := make([]string, 0, len(posts))
-	for _, p := range posts {
-		ids = append(ids, p.PostID)
-	}
-	return ids
-}
-
 func TestGetPostByID(t *testing.T) {
 	pool := setupTestDB(t)
 	repo := NewPostsRepo(pool)
@@ -646,32 +638,93 @@ func TestCreatePost(t *testing.T) {
 	repo := NewPostsRepo(pool)
 
 	testCases := []struct {
-		caseName string
-		f        func(t *testing.T) *models.Post
-		success  bool
+		caseName     string
+		f            func(t *testing.T) *models.Post
+		wantAttached bool
+		wantErr      error
+		success      bool
 	}{
 		{
-			caseName: "create post with topic",
+			caseName: "create post with topic and uploaded image",
+			f: func(t *testing.T) *models.Post {
+				userID := newUser(t, pool)
+				topicID, _ := seedTopic(t, pool, userID)
+				imageID := uuid.NewString()
+				seedUpload(t, pool, imageID, userID)
+				return &models.Post{TopicID: &topicID, UserID: userID,
+					ImageID: &imageID, Description: strPtr("desc_" + uuid.NewString())}
+			},
+			wantAttached: true,
+			success:      true,
+		},
+		{
+			caseName: "create post with topic without image",
 			f: func(t *testing.T) *models.Post {
 				userID := newUser(t, pool)
 				topicID, _ := seedTopic(t, pool, userID)
 				return &models.Post{TopicID: &topicID, UserID: userID,
-					ImageURL: strPtr("https://img.test/1"), Description: strPtr("desc_" + uuid.NewString())}
+					Description: strPtr("desc_" + uuid.NewString())}
 			},
 			success: true,
 		},
 		{
-			caseName: "create post without topic",
+			caseName: "create post without topic and image",
 			f: func(t *testing.T) *models.Post {
 				return &models.Post{UserID: newUser(t, pool), Description: strPtr("desc_" + uuid.NewString())}
 			},
 			success: true,
 		},
 		{
+			caseName: "create post with image that was not uploaded",
+			f: func(t *testing.T) *models.Post {
+				imageID := uuid.NewString()
+				return &models.Post{UserID: newUser(t, pool), ImageID: &imageID,
+					Description: strPtr("desc_" + uuid.NewString())}
+			},
+			wantErr: domain.ErrInvalidImage,
+		},
+		{
+			caseName: "create post with image of other user",
+			f: func(t *testing.T) *models.Post {
+				owner, userID := newUser(t, pool), newUser(t, pool)
+				imageID := uuid.NewString()
+				seedUpload(t, pool, imageID, owner)
+				return &models.Post{UserID: userID, ImageID: &imageID,
+					Description: strPtr("desc_" + uuid.NewString())}
+			},
+			wantErr: domain.ErrInvalidImage,
+		},
+		{
+			caseName: "create post with already attached image",
+			f: func(t *testing.T) *models.Post {
+				userID := newUser(t, pool)
+				imageID := uuid.NewString()
+				seedUpload(t, pool, imageID, userID)
+				require.NoError(t, repo.CreatePost(context.Background(), &models.Post{
+					UserID: userID, ImageID: &imageID, Description: strPtr("first_" + uuid.NewString())}))
+				return &models.Post{UserID: userID, ImageID: &imageID,
+					Description: strPtr("second_" + uuid.NewString())}
+			},
+			wantAttached: true,
+			wantErr:      domain.ErrInvalidImage,
+		},
+		{
+			caseName: "failed post insert rolls back image attach",
+			f: func(t *testing.T) *models.Post {
+				userID := newUser(t, pool)
+				imageID := uuid.NewString()
+				seedUpload(t, pool, imageID, userID)
+				topicID := missingTopicID
+				return &models.Post{TopicID: &topicID, UserID: userID, ImageID: &imageID,
+					Description: strPtr("desc_" + uuid.NewString())}
+			},
+		},
+		{
 			caseName: "create post with not found topic",
 			f: func(t *testing.T) *models.Post {
 				topicID := missingTopicID
-				return &models.Post{TopicID: &topicID, UserID: newUser(t, pool), Description: strPtr("desc")}
+				return &models.Post{TopicID: &topicID, UserID: newUser(t, pool),
+					Description: strPtr("desc_" + uuid.NewString())}
 			},
 		},
 		{
@@ -688,12 +741,28 @@ func TestCreatePost(t *testing.T) {
 
 			err := repo.CreatePost(context.Background(), post)
 			if !tc.success {
-				require.Error(t, err)
+				requireErr(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if post.UserID == "invalid_uuid" {
 				return
 			}
-			require.NoError(t, err)
-			assert.Equal(t, 1, countRows(t, pool,
-				`SELECT COUNT(*) FROM posts WHERE user_id = $1 AND description = $2`, post.UserID, *post.Description))
+
+			wantPosts := 0
+			if tc.success {
+				wantPosts = 1
+			}
+			assert.Equal(t, wantPosts, countRows(t, pool,
+				`SELECT COUNT(*) FROM posts WHERE user_id = $1 AND description = $2 AND image_id IS NOT DISTINCT FROM $3`,
+				post.UserID, *post.Description, post.ImageID))
+
+			if post.ImageID != nil {
+				attached := countRows(t, pool,
+					`SELECT COUNT(*) FROM uploads WHERE image_id = $1 AND attached = true`, *post.ImageID)
+				assert.Equal(t, tc.wantAttached, attached == 1)
+			}
 		})
 	}
 }
@@ -706,20 +775,23 @@ func TestBuildUpdatePost(t *testing.T) {
 		caseName        string
 		f               func(t *testing.T) *models.Post
 		wantDescription string
+		wantImage       string
 		success         bool
 	}{
 		{
 			caseName: "update description and image",
 			f: func(t *testing.T) *models.Post {
 				userID := newUser(t, pool)
+				imageID := uuid.NewString()
+				seedUpload(t, pool, imageID, userID)
 				return &models.Post{ID: newPost(t, pool, userID), UserID: userID,
-					ImageURL: strPtr("https://img.test/new"), Description: strPtr("new")}
+					ImageID: &imageID, Description: strPtr("new")}
 			},
 			wantDescription: "new",
 			success:         true,
 		},
 		{
-			caseName: "update only description",
+			caseName: "update only description keeps image empty",
 			f: func(t *testing.T) *models.Post {
 				userID := newUser(t, pool)
 				return &models.Post{ID: newPost(t, pool, userID), UserID: userID, Description: strPtr("only_desc")}
@@ -754,6 +826,12 @@ func TestBuildUpdatePost(t *testing.T) {
 				assert.Equal(t, post.UserID, updated.UserID)
 				require.NotNil(t, updated.Description)
 				assert.Equal(t, tc.wantDescription, *updated.Description)
+				if post.ImageID != nil {
+					require.NotNil(t, updated.ImageID)
+					assert.Equal(t, *post.ImageID, *updated.ImageID)
+				} else {
+					assert.Nil(t, updated.ImageID)
+				}
 			} else {
 				require.Error(t, err)
 				assert.Nil(t, updated)

@@ -26,10 +26,9 @@ definitions:
   dto.CreatePostDTO:
     properties:
       description:
-        maxLength: 4096
+        maxLength: 8192
         type: string
-      image_url:
-        maxLength: 2048
+      image_id:
         type: string
       topic_id:
         type: integer
@@ -152,8 +151,7 @@ definitions:
       description:
         maxLength: 4096
         type: string
-      image_url:
-        maxLength: 2048
+      image_id:
         type: string
       topic_id:
         type: integer
@@ -246,6 +244,8 @@ definitions:
         type: string
       description:
         type: string
+      imageID:
+        type: string
       imageURL:
         type: string
       likeCount:
@@ -313,6 +313,8 @@ definitions:
     type: object
   models.Profile:
     properties:
+      avatarID:
+        type: string
       avatarUrl:
         type: string
       bio:
@@ -2250,6 +2252,78 @@ paths:
       security:
       - BearerAuth: []
       summary: Пожаловаться на топик
+      tags:
+      - posts
+  /social/upload/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает изображение для публикации. Поддерживаются JPEG, PNG
+        и WebP. Максимальный размер — 10 МБ.
+      parameters:
+      - description: Файл изображения
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID загруженного изображения
+          schema:
+            type: string
+        "400":
+          description: Некорректный файл или неподдерживаемый формат
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Ошибка загрузки изображения
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Загрузить изображение
+      tags:
+      - posts
+  /social/upload/post:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает изображение для публикации. Поддерживаются JPEG, PNG
+        и WebP. Максимальный размер — 10 МБ.
+      parameters:
+      - description: Файл изображения
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID загруженного изображения
+          schema:
+            type: string
+        "400":
+          description: Некорректный файл или неподдерживаемый формат
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Ошибка загрузки изображения
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Загрузить изображение
       tags:
       - posts
   /social/ws/connect:

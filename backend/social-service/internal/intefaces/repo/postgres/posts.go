@@ -30,7 +30,7 @@ func (r *PostsRepo) GetPostByID(ctx context.Context, id string) (*models.FeedPos
 		ps.id AS post_id,
 		ps.topic_id,
 		ps.user_id,
-		ps.image_url,
+		ps.image_id,
 		ps.description,
 		ps.views,
 	(SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
@@ -87,7 +87,7 @@ ps.id AS post_id,
 ps.topic_id,
 (SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
 ps.user_id,
-ps.image_url,
+ps.image_id,
 ps.description,
 ps.views,
 (SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
@@ -135,7 +135,7 @@ ps.id AS post_id,
 ps.topic_id,
 (SELECT title FROM topics WHERE ps.topic_id = id) AS topic_title, 
 ps.user_id,
-ps.image_url,
+ps.image_id,
 ps.description,
 ps.views,
 (SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count
@@ -180,7 +180,7 @@ func (r *PostsRepo) GetGlobalPosts(ctx context.Context, postId *uuid.UUID, creat
 			ps.id AS post_id,
 			ps.topic_id,
 			ps.user_id, 
-			ps.image_url, 
+			ps.image_id, 
 			ps.description, 
 			ps.views,
 			(SELECT COUNT(*) FROM post_likes WHERE post_id = ps.id) AS like_count,
@@ -310,14 +310,36 @@ func (r *PostsRepo) ReportTopic(ctx context.Context, topic *models.TopicsReport)
 }
 
 func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
-	sql := `INSERT INTO posts (topic_id, user_id, image_url, description) VALUES ($1, $2, $3, $4)`
-	_, err := r.pool.Exec(ctx, sql, post.TopicID, post.UserID, post.ImageURL, post.Description)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("r.pool.Begin: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if post.ImageID != nil {
+		res, err := tx.Exec(ctx,
+			`UPDATE uploads SET attached = true, updated_at = NOW()
+			 WHERE image_id = $1 AND user_id = $2 AND attached = false`,
+			post.ImageID, post.UserID)
+		if err != nil {
+			return fmt.Errorf("attach upload: %w", err)
+		}
+		if res.RowsAffected() == 0 {
+			return domain.ErrInvalidImage
+		}
+	}
+
+	sql := `INSERT INTO posts (topic_id, user_id, image_id, description) VALUES ($1, $2, $3, $4)`
+	if _, err := tx.Exec(ctx, sql, post.TopicID, post.UserID, post.ImageID, post.Description); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == unique_violation {
 			return fmt.Errorf("post already exists: %w", domain.ErrAlreadyExists)
 		}
-		return fmt.Errorf("r.pool.Exec: %w", err)
+		return fmt.Errorf("insert post: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("tx.Commit: %w", err)
 	}
 	return nil
 }
@@ -327,8 +349,8 @@ func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*mo
 		Where(squirrel.Eq{"id": post.ID, "user_id": post.UserID}).
 		Set("updated_at", squirrel.Expr("NOW()"))
 
-	if post.ImageURL != nil {
-		builder = builder.Set("image_url", *post.ImageURL)
+	if post.ImageID != nil {
+		builder = builder.Set("image_id", *post.ImageID)
 	}
 
 	if post.Description != nil {
@@ -336,7 +358,7 @@ func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*mo
 	}
 
 	query, args, err := builder.
-		Suffix("RETURNING topic_id, user_id, image_url, description").
+		Suffix("RETURNING topic_id, user_id, image_id, description").
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 	if err != nil {
@@ -347,7 +369,7 @@ func (r *PostsRepo) BuildUpdatePost(ctx context.Context, post *models.Post) (*mo
 	if err := r.pool.QueryRow(ctx, query, args...).Scan(
 		&resp.TopicID,
 		&resp.UserID,
-		&resp.ImageURL,
+		&resp.ImageID,
 		&resp.Description,
 	); err != nil {
 		return nil, fmt.Errorf("r.pool.QueryRow: %w", err)
