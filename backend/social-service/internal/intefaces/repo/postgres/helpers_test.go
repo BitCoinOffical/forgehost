@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -317,4 +318,103 @@ func postIDs(posts []models.FeedPost) []string {
 		ids = append(ids, p.PostID)
 	}
 	return ids
+}
+func searchToken() string {
+	return "q" + uuid.NewString()[:8]
+}
+
+func seedPostText(t *testing.T, pool *pgxpool.Pool, userID string, description, imageID *string) string {
+	t.Helper()
+	var id string
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO posts (user_id, description, image_id) VALUES ($1, $2, $3) RETURNING id`,
+		userID, description, imageID).Scan(&id))
+	return id
+}
+
+func seedPostsOldestFirst(t *testing.T, pool *pgxpool.Pool, userID, token string, n int) []string {
+	t.Helper()
+	ids := make([]string, 0, n)
+	for i := range n {
+		id := seedPostText(t, pool, userID, strPtr(token+strconv.Itoa(i)), nil)
+		setPostCreatedAt(t, pool, id, time.Now().Add(-time.Duration(n-i)*time.Hour))
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func seedStreamTitle(t *testing.T, pool *pgxpool.Pool, userID, title string) string {
+	t.Helper()
+	videoID := newVideoID()
+	var id string
+	require.NoError(t, pool.QueryRow(context.Background(),
+		`INSERT INTO streams (user_id, video_id, title, status, embed_url, viewers, likes)
+		 VALUES ($1, $2, $3, 'created', $4, 0, 0) RETURNING id`,
+		userID, videoID, title, "https://embed.test/"+videoID).Scan(&id))
+	return id
+}
+
+func seedStreamsByTitle(t *testing.T, pool *pgxpool.Pool, userID, token string, n int) []string {
+	t.Helper()
+	ids := make([]string, n)
+	for i := n - 1; i >= 0; i-- {
+		ids[i] = seedStreamTitle(t, pool, userID, token+strconv.Itoa(i))
+	}
+	return ids
+}
+
+func renameUser(t *testing.T, pool *pgxpool.Pool, userID, username string) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(),
+		`UPDATE profiles SET username = $2 WHERE user_id = $1`, userID, username)
+	require.NoError(t, err)
+}
+
+func seedUsersByName(t *testing.T, pool *pgxpool.Pool, token string, n int) []string {
+	t.Helper()
+	ids := make([]string, n)
+	for i := n - 1; i >= 0; i-- {
+		ids[i] = newUser(t, pool)
+		renameUser(t, pool, ids[i], token+strconv.Itoa(i))
+	}
+	return ids
+}
+
+func wantPost(id, userID string, description, imageID *string) models.SearchPost {
+	return models.SearchPost{
+		ID:          uuid.MustParse(id),
+		UserID:      uuid.MustParse(userID),
+		Description: description,
+		ImageID:     imageID,
+	}
+}
+
+func wantStream(id, userID, title string) models.SearchStream {
+	return models.SearchStream{ID: id, UserID: uuid.MustParse(userID), Title: title}
+}
+
+func wantSuggestion(kind, id, text string) models.Suggestion {
+	return models.Suggestion{Type: kind, ID: id, Text: text}
+}
+func defaultAvatarURL(userID string) *string {
+	url := "https://avatar.test/" + userID[:8]
+	return &url
+}
+
+func setAvatarURL(t *testing.T, pool *pgxpool.Pool, userID, avatarURL string) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(),
+		`UPDATE profiles SET avatar_url = $2 WHERE user_id = $1`, userID, avatarURL)
+	require.NoError(t, err)
+}
+
+func clearAvatarURL(t *testing.T, pool *pgxpool.Pool, userID string) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(),
+		`UPDATE profiles SET avatar_url = NULL WHERE user_id = $1`, userID)
+	require.NoError(t, err)
+}
+
+func wantUser(userID, username string, avatarURL *string) models.SearchUser {
+	return models.SearchUser{UserID: uuid.MustParse(userID), Username: username, AvatarURL: avatarURL}
 }
