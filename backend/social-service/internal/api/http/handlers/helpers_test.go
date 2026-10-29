@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	v2 "encoding/json/v2"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -171,4 +172,16 @@ func serveAvatarPostImage(
 	handler.UploadAvatarImage(c)
 
 	return w
+}
+func mustJSON(t *testing.T, v any) string {
+	t.Helper()
+	b, err := v2.Marshal(v)
+	require.NoError(t, err)
+	return string(b)
+}
+func withUserID(id string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("user_claims", &jwtpkg.Claims{UserID: id})
+		c.Next()
+	}
 }
