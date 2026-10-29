@@ -20,6 +20,14 @@ type S3 interface {
 	Upload(ctx context.Context, key string, contentType string, body io.ReadSeeker) error
 }
 
+type SearchRepo interface {
+	SearchPosts(ctx context.Context, q string, limit int) ([]models.SearchPost, error)
+	SearchStreams(ctx context.Context, q string, limit int) ([]models.SearchStream, error)
+	SearchUsers(ctx context.Context, q string, limit int) ([]models.SearchUser, error)
+	SuggestUsers(ctx context.Context, userID uuid.UUID, prefix string, limit int) ([]models.Suggestion, error)
+	SuggestStreams(ctx context.Context, prefix string, limit int) ([]models.Suggestion, error)
+}
+
 type CommentsRepo interface {
 	ListComments(ctx context.Context, postId string) ([]models.FeedComments, error)
 	CreateComment(ctx context.Context, comment *models.Comments) error
