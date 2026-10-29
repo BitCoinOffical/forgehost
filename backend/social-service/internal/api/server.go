@@ -140,7 +140,8 @@ func (s *Server) Run() error {
 		social.POST("/upload/post", s.h.Uploader.UploadPostImage)
 		social.POST("/upload/avatar", s.h.Uploader.UploadAvatarImage)
 
-		social.GET("/search")
+		social.GET("/search", s.h.Search.Search)
+		social.GET("/search/suggest", s.h.Search.Suggest)
 	}
 
 	return s.server.ListenAndServe()
