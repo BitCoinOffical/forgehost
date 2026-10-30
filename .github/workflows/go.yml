@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-auth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - name: Run tests
+        working-directory: ./backend/auth-service
+        run: go test ./...
+
+  test-hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - name: Run tests
+        working-directory: ./backend/hosting-service
+        run: go test ./...
+  
+  test-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - name: Run tests
+        working-directory: ./backend/notification-service
+        run: go test ./...
+
+  test-social:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+
+      - name: Run tests
+        working-directory: ./backend/social-service
+        run: go test ./...
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [test-auth, test-hosting, test-notification, test-social]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build auth-service
+        run: docker build -t auth-service ./backend/auth-service
+
+      - name: Build hosting-service
+        run: docker build -t hosting-service ./backend/hosting-service
+
+      - name: Build notification-service
+        run: docker build -t notification-service ./backend/notification-service
+
+      - name: Build social-service
+        run: docker build -t social-service ./backend/social-service

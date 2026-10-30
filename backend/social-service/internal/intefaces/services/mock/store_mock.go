@@ -126,6 +126,105 @@ func (mr *MockS3MockRecorder) Upload(ctx, key, contentType, body any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockS3)(nil).Upload), ctx, key, contentType, body)
 }
 
+// MockSearchRepo is a mock of SearchRepo interface.
+type MockSearchRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockSearchRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockSearchRepoMockRecorder is the mock recorder for MockSearchRepo.
+type MockSearchRepoMockRecorder struct {
+	mock *MockSearchRepo
+}
+
+// NewMockSearchRepo creates a new mock instance.
+func NewMockSearchRepo(ctrl *gomock.Controller) *MockSearchRepo {
+	mock := &MockSearchRepo{ctrl: ctrl}
+	mock.recorder = &MockSearchRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSearchRepo) EXPECT() *MockSearchRepoMockRecorder {
+	return m.recorder
+}
+
+// SearchPosts mocks base method.
+func (m *MockSearchRepo) SearchPosts(ctx context.Context, q string, limit int) ([]models.SearchPost, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchPosts", ctx, q, limit)
+	ret0, _ := ret[0].([]models.SearchPost)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchPosts indicates an expected call of SearchPosts.
+func (mr *MockSearchRepoMockRecorder) SearchPosts(ctx, q, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchPosts", reflect.TypeOf((*MockSearchRepo)(nil).SearchPosts), ctx, q, limit)
+}
+
+// SearchStreams mocks base method.
+func (m *MockSearchRepo) SearchStreams(ctx context.Context, q string, limit int) ([]models.SearchStream, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchStreams", ctx, q, limit)
+	ret0, _ := ret[0].([]models.SearchStream)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchStreams indicates an expected call of SearchStreams.
+func (mr *MockSearchRepoMockRecorder) SearchStreams(ctx, q, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchStreams", reflect.TypeOf((*MockSearchRepo)(nil).SearchStreams), ctx, q, limit)
+}
+
+// SearchUsers mocks base method.
+func (m *MockSearchRepo) SearchUsers(ctx context.Context, q string, limit int) ([]models.SearchUser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchUsers", ctx, q, limit)
+	ret0, _ := ret[0].([]models.SearchUser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchUsers indicates an expected call of SearchUsers.
+func (mr *MockSearchRepoMockRecorder) SearchUsers(ctx, q, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchUsers", reflect.TypeOf((*MockSearchRepo)(nil).SearchUsers), ctx, q, limit)
+}
+
+// SuggestStreams mocks base method.
+func (m *MockSearchRepo) SuggestStreams(ctx context.Context, prefix string, limit int) ([]models.Suggestion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SuggestStreams", ctx, prefix, limit)
+	ret0, _ := ret[0].([]models.Suggestion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SuggestStreams indicates an expected call of SuggestStreams.
+func (mr *MockSearchRepoMockRecorder) SuggestStreams(ctx, prefix, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuggestStreams", reflect.TypeOf((*MockSearchRepo)(nil).SuggestStreams), ctx, prefix, limit)
+}
+
+// SuggestUsers mocks base method.
+func (m *MockSearchRepo) SuggestUsers(ctx context.Context, userID uuid.UUID, prefix string, limit int) ([]models.Suggestion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SuggestUsers", ctx, userID, prefix, limit)
+	ret0, _ := ret[0].([]models.Suggestion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SuggestUsers indicates an expected call of SuggestUsers.
+func (mr *MockSearchRepoMockRecorder) SuggestUsers(ctx, userID, prefix, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuggestUsers", reflect.TypeOf((*MockSearchRepo)(nil).SuggestUsers), ctx, userID, prefix, limit)
+}
+
 // MockCommentsRepo is a mock of CommentsRepo interface.
 type MockCommentsRepo struct {
 	ctrl     *gomock.Controller

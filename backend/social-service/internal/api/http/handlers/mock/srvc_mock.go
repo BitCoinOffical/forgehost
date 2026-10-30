@@ -19,6 +19,60 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
+// MockSearchService is a mock of SearchService interface.
+type MockSearchService struct {
+	ctrl     *gomock.Controller
+	recorder *MockSearchServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockSearchServiceMockRecorder is the mock recorder for MockSearchService.
+type MockSearchServiceMockRecorder struct {
+	mock *MockSearchService
+}
+
+// NewMockSearchService creates a new mock instance.
+func NewMockSearchService(ctrl *gomock.Controller) *MockSearchService {
+	mock := &MockSearchService{ctrl: ctrl}
+	mock.recorder = &MockSearchServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSearchService) EXPECT() *MockSearchServiceMockRecorder {
+	return m.recorder
+}
+
+// Search mocks base method.
+func (m *MockSearchService) Search(ctx context.Context, q, typ string, limit int) (*models.SearchResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", ctx, q, typ, limit)
+	ret0, _ := ret[0].(*models.SearchResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockSearchServiceMockRecorder) Search(ctx, q, typ, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockSearchService)(nil).Search), ctx, q, typ, limit)
+}
+
+// Suggest mocks base method.
+func (m *MockSearchService) Suggest(ctx context.Context, userIDStr, q string, limit int) ([]models.Suggestion, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Suggest", ctx, userIDStr, q, limit)
+	ret0, _ := ret[0].([]models.Suggestion)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Suggest indicates an expected call of Suggest.
+func (mr *MockSearchServiceMockRecorder) Suggest(ctx, userIDStr, q, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Suggest", reflect.TypeOf((*MockSearchService)(nil).Suggest), ctx, userIDStr, q, limit)
+}
+
 // MockUploaderService is a mock of UploaderService interface.
 type MockUploaderService struct {
 	ctrl     *gomock.Controller

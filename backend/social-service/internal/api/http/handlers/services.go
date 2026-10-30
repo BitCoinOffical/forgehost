@@ -18,6 +18,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type SearchService interface {
+	Search(ctx context.Context, q, typ string, limit int) (*models.SearchResponse, error)
+	Suggest(ctx context.Context, userIDStr string, q string, limit int) ([]models.Suggestion, error)
+}
+
 type UploaderService interface {
 	UploadImage(ctx context.Context, prefix, userID, ext, contentType string, file multipart.File) (string, error)
 }
@@ -104,6 +109,7 @@ type Services struct {
 	chat    ChatService
 	strm    StreamService
 	img     UploaderService
+	search  SearchService
 }
 
 func NewServices(pool *pgxpool.Pool, rdb *redis.Client, storefs *seaweedfs.Storage) *Services {
@@ -128,7 +134,10 @@ func NewServices(pool *pgxpool.Pool, rdb *redis.Client, storefs *seaweedfs.Stora
 	imgrepo := postgres.NewUploadRepo(pool)
 	img := services.NewUploaderService(imgrepo, imgstore, storefs.PublicEndpoint)
 
-	return &Services{profile: profile, post: post, coms: coms, chat: chat, strm: strm, img: img}
+	searchRepo := postgres.NewSearchRepo(pool)
+	search := services.NewSearchService(searchRepo, storefs.PublicEndpoint)
+
+	return &Services{profile: profile, post: post, coms: coms, chat: chat, strm: strm, img: img, search: search}
 }
 
 type Handlers struct {
@@ -138,6 +147,7 @@ type Handlers struct {
 	Chats    *ChatHandler
 	Stream   *StreamHandler
 	Uploader *UploaderHandler
+	Search   *SearchHandler
 }
 
 func NewHandlers(srvc *Services, logger *zap.Logger, cfg *oauth2.Config) *Handlers {
@@ -147,5 +157,6 @@ func NewHandlers(srvc *Services, logger *zap.Logger, cfg *oauth2.Config) *Handle
 	chat := NewChatHandler(srvc.chat, logger)
 	stream := NewStreamHandler(logger, cfg, srvc.strm)
 	uploader := NewUploaderHandler(srvc.img, logger)
-	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat, Stream: stream, Uploader: uploader}
+	search := NewSearchHandler(srvc.search, logger)
+	return &Handlers{Profile: profile, Posts: posts, Comments: comments, Chats: chat, Stream: stream, Uploader: uploader, Search: search}
 }

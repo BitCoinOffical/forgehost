@@ -16,7 +16,7 @@ func GetUserID(c *gin.Context) (string, error) {
 
 	v, ok := val.(*jwtpkg.Claims)
 	if !ok {
-		return "", fmt.Errorf("middleware.GetUserID: %w type: %T", domain.ErrIncorrectType, v)
+		return "", fmt.Errorf("middleware.GetUserID: %w type: %T", domain.ErrIncorrectType, val)
 	}
 
 	return v.UserID, nil

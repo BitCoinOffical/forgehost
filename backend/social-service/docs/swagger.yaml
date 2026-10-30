@@ -313,7 +313,7 @@ definitions:
     type: object
   models.Profile:
     properties:
-      avatarID:
+      avatar_id:
         type: string
       avatarUrl:
         type: string
@@ -344,6 +344,52 @@ definitions:
         type: array
       profile:
         $ref: '#/definitions/models.Profile'
+    type: object
+  models.SearchPost:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      imageID:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.SearchResponse:
+    properties:
+      posts:
+        items:
+          $ref: '#/definitions/models.SearchPost'
+        type: array
+      streams:
+        items:
+          $ref: '#/definitions/models.SearchStream'
+        type: array
+      users:
+        items:
+          $ref: '#/definitions/models.SearchUser'
+        type: array
+    type: object
+  models.SearchStream:
+    properties:
+      id:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.SearchUser:
+    properties:
+      avatar_url:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
     type: object
   models.Stream:
     properties:
@@ -376,6 +422,15 @@ definitions:
   models.Subscriptions:
     properties:
       userID:
+        type: string
+    type: object
+  models.Suggestion:
+    properties:
+      id:
+        type: string
+      text:
+        type: string
+      type:
         type: string
     type: object
   models.Topics:
@@ -1884,6 +1939,76 @@ paths:
       summary: Получить свой профиль
       tags:
       - profile
+  /social/search:
+    get:
+      consumes:
+      - application/json
+      description: Поиск постов, стримов или пользователей. Возвращает не более 10
+        результатов
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: q
+        type: string
+      - description: Тип поиска
+        enum:
+        - posts
+        - streams
+        - users
+        in: query
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SearchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Поиск
+      tags:
+      - search
+  /social/search/suggest:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает поисковые подсказки для текущего пользователя
+      parameters:
+      - description: Поисковый запрос
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Suggestion'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Поисковые подсказки
+      tags:
+      - search
   /social/streams:
     post:
       consumes:
