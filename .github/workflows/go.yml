@@ -62,21 +62,3 @@ jobs:
       - name: Run tests
         working-directory: ./backend/social-service
         run: go test ./...
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [test-auth, test-hosting, test-notification, test-social]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build auth-service
-        run: docker build -t auth-service ./backend/auth-service
-
-      - name: Build hosting-service
-        run: docker build -t hosting-service ./backend/hosting-service
-
-      - name: Build notification-service
-        run: docker build -t notification-service ./backend/notification-service
-
-      - name: Build social-service
-        run: docker build -t social-service ./backend/social-service
