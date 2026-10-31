@@ -74,7 +74,9 @@ func (w *Worker) WorkerPool(ctx context.Context, worker int) <-chan error {
 						},
 					)
 					if err != nil {
-						ch.Close()
+						if err := ch.Close(); err != nil {
+							w.logger.Error("failed to close RabbitMQ channel", zap.Error(err))
+						}
 						w.logger.Error("ch.QueueDeclare", zap.Error(err))
 						time.Sleep(time.Second)
 						continue
@@ -86,7 +88,9 @@ func (w *Worker) WorkerPool(ctx context.Context, worker int) <-chan error {
 						false,
 					)
 					if err != nil {
-						ch.Close()
+						if err := ch.Close(); err != nil {
+							w.logger.Error("failed to close RabbitMQ channel", zap.Error(err))
+						}
 						w.logger.Error("ch.Qos", zap.Error(err))
 						time.Sleep(time.Second)
 						continue
@@ -102,7 +106,9 @@ func (w *Worker) WorkerPool(ctx context.Context, worker int) <-chan error {
 						nil,
 					)
 					if err != nil {
-						ch.Close()
+						if err := ch.Close(); err != nil {
+							w.logger.Error("failed to close RabbitMQ channel", zap.Error(err))
+						}
 						w.logger.Error("ch.Consume", zap.Error(err))
 						time.Sleep(time.Second)
 						continue
@@ -158,7 +164,9 @@ func (w *Worker) WorkerPool(ctx context.Context, worker int) <-chan error {
 								w.logger.Debug("worker: ack failed", zap.String("user_id", body.UserID), zap.Error(ackErr))
 							}
 						}
-						ch.Close()
+						if err := ch.Close(); err != nil {
+							w.logger.Error("failed to close RabbitMQ channel", zap.Error(err))
+						}
 						w.logger.Info("worker stoped", zap.Int("number", num+1))
 					}
 				}
