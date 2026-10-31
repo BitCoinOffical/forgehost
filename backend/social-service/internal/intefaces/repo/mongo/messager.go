@@ -2,6 +2,7 @@ package mongorepo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/BitCoinOffical/forgehost/social-service/internal/domain"
@@ -38,7 +39,11 @@ func (r *MessagerRepo) GetMessages(ctx context.Context, chatID string) ([]models
 	if err != nil {
 		return nil, fmt.Errorf("r.coll.Find: %w", err)
 	}
-	defer cursor.Close(ctx)
+	defer func() {
+		if closeErr := cursor.Close(ctx); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("cursor.Close: %w", closeErr))
+		}
+	}()
 
 	msgs := []models.Message{}
 

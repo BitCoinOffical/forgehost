@@ -2,6 +2,7 @@ package rabbitqueue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	rabbitmq "github.com/BitCoinOffical/forgehost/auth-service/internal/adapters/RabbitMQ"
@@ -31,9 +32,10 @@ func (r *RabbitQueue) AddEmailTaskQueue(ctx context.Context, body []byte) error 
 		return fmt.Errorf("r.conn.Channel: %w", err)
 	}
 	defer func() {
-		ch.Close()
+		if closeErr := ch.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("ch.Close: %w", closeErr))
+		}
 	}()
-
 	q, err := ch.QueueDeclare(
 		nameQueue,
 		true,

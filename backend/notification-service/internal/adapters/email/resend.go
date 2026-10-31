@@ -40,9 +40,11 @@ func (g *ResendClient) SendCodeEmail(to []string, code string, Subject string) (
 		return "", fmt.Errorf("template.ParseFiles: %w", err)
 	}
 	var buf bytes.Buffer
-	tmpl.Execute(&buf, Data{
+	if err := tmpl.Execute(&buf, Data{
 		Code: code,
-	})
+	}); err != nil {
+		return "", fmt.Errorf("tmpl.Execute: %w", err)
+	}
 
 	params := &resend.SendEmailRequest{
 		From:    resendFrom,

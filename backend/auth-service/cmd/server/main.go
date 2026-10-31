@@ -133,8 +133,11 @@ func main() {
 	defer cancel()
 	logger.Info("received a signal indicating the completion of operations")
 
-	rc.Close()
-	logger.Info("rabbitMQ conn closed")
+	if err := rc.Close(); err != nil {
+		logger.Error("failed close rabbitMQ", zap.Error(err))
+	} else {
+		logger.Info("rabbitMQ conn closed")
+	}
 
 	postgresdb.ClosePool(pool)
 	logger.Info("pool closesd")

@@ -101,7 +101,7 @@ func NewLoad() (*Config, error) {
 		return nil, err
 	}
 
-	var env Env = Env(cfg.App.DebugLevel)
+	env := Env(cfg.App.DebugLevel)
 	if env != EnvProd && env != EnvDev {
 		return nil, fmt.Errorf("incorrect debug level: %s", env)
 	}

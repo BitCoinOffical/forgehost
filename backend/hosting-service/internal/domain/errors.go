@@ -34,5 +34,5 @@ var ErrLimitExceeded = errors.New("waiting limit exceeded")
 // stream
 var ErrStreamExists = errors.New("stream already exists")
 var ErrStreamNotFound = errors.New("stream not found")
-var ErrChannelNotLinked = errors.New("the channel is not linked.")
+var ErrChannelNotLinked = errors.New("the channel is not linked")
 var ErrInvalidState = errors.New("oauth state mismatch")

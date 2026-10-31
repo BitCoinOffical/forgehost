@@ -64,9 +64,9 @@ func serveChat(t *testing.T, method, route, url string, in chatInput, h gin.Hand
 
 	r := gin.New()
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("username", func(fl validator.FieldLevel) bool {
+		require.NoError(t, v.RegisterValidation("username", func(fl validator.FieldLevel) bool {
 			return usernameRe.MatchString(fl.Field().String())
-		})
+		}))
 	}
 	r.Handle(method, route, func(c *gin.Context) {
 		if in.userID != nil {
