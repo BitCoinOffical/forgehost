@@ -78,7 +78,7 @@ services:
     ports:
       - "8083:8083"
     volumes:
-      - ./logs:/auth/logs
+      - ./logs:/notification/logs
     build: ./backend/notification-service
     command: ["./notification-app"]
     env_file:
@@ -89,7 +89,70 @@ services:
         loki-url: "http://localhost:3100/loki/api/v1/push"
         loki-retries: "5"
         loki-batch-size: "400"
-  
+
+  hosting-service:
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./logs:/hosting/logs
+    build: ./backend/hosting-service
+    command: ["./hosting-main"]
+    env_file:
+      - ./backend/hosting-service/.env
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-retries: "5"
+        loki-batch-size: "400"
+
+  hosting-worker:
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./logs:/hosting/logs
+    build: ./backend/hosting-service
+    command: ["./hosting-worker"]
+    env_file:
+      - ./backend/hosting-service/.env
+    depends_on:
+      postgres-hosting:
+        condition: service_healthy
+
+  hosting-monitoring:
+    ports:
+      - "8087:8087"
+    volumes:
+      - ./logs:/monitoring/logs
+    build: ./backend/hosting-service
+    command: ["./hosting-monitoring"]
+    env_file:
+      - ./backend/hosting-service/.env
+    depends_on:
+      postgres-hosting:
+        condition: service_healthy
+
+  postgres-hosting:
+      image: postgres:18
+      ports:
+      - "5434:5432"
+      volumes:
+      - postgres_hosting_data:/var/lib/postgresql
+      env_file:
+      -  ./backend/hosting-service/.env
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U postgres -d hosting_db"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+
+  redis-hosting:
+    image: redis:latest
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_hosting_data:/data
+
   kafka:
     image: apache/kafka:3.9.0
     ports:
@@ -127,7 +190,7 @@ services:
     ports:
       - "8084:8084"
     volumes:
-      - ./logs:/auth/logs
+      - ./logs:/social/logs
     build: ./backend/social-service
     command: ["./social-main"]
     env_file:
@@ -164,7 +227,16 @@ services:
       - "6380:6379"
     volumes:
       - redis_social_data:/data
-  
+
+  mongo-social:
+    image: mongo:8
+    container_name: mongo-social
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-social-data:/data/db
+
   grafana-alloy:
     image: grafana/alloy:latest
     ports:
@@ -230,7 +302,11 @@ volumes:
   postgres_social_data:
   redis_auth_data:
   redis_social_data:
+  redis_hosting_data:
+  postgres_hosting_data:
   rabbitmq_data:
   kafka_data:
   loki-data:
   prometheus-data:
+  seaweedfs-data:
+  mongo-social-data:
