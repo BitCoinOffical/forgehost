@@ -182,6 +182,11 @@ func main() {
 	postgresdb.ClosePool(pool)
 	logger.Info("pool closed")
 
-	cache.Close()
-	rate.Close()
+	if err := cache.Close(); err != nil {
+		logger.Error("failed to close cache", zap.Error(err))
+	}
+
+	if err := rate.Close(); err != nil {
+		logger.Error("failed to close rate limiter", zap.Error(err))
+	}
 }
