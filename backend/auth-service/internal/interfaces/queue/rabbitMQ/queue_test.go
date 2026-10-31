@@ -48,7 +48,9 @@ func setupTestRabbit(t *testing.T) *rabbitmq.ResilientConnection {
 		Port: port.Port(),
 	}, zaptest.NewLogger(t))
 
-	t.Cleanup(rc.Close)
+	t.Cleanup(func() {
+		require.NoError(t, rc.Close())
+	})
 
 	return rc
 }
@@ -102,5 +104,7 @@ func TestAddEmailTaskQueue(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
-	ch.Close()
+
+	require.NoError(t, ch.Close())
+
 }
