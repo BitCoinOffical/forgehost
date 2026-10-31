@@ -1,0 +1,73 @@
+package config
+
+import (
+	"fmt"
+
+	"github.com/caarlos0/env"
+)
+
+const (
+	EnvProd = "prod"
+	EnvDev  = "dev"
+)
+
+type Env string
+
+type Config struct {
+	Postgres PostgresConfig
+	Redis    RedisConfig
+	App      AppConfig
+}
+
+type PostgresConfig struct {
+	DBUser     string `env:"DB_USER,required"`
+	DBPassword string `env:"DB_PASSWORD,required"`
+	DBHost     string `env:"DB_HOST,required"`
+	DBPort     string `env:"DB_PORT,required"`
+	DBName     string `env:"DB_NAME,required"`
+}
+
+type RedisConfig struct {
+	RDBCacheAddr string `env:"CACHE_RDB_ADDR,required"`
+	RDBCachePort string `env:"CACHE_RDB_PORT,required"`
+	RDBCacheDB   int    `env:"CACHE_RDB_DB,required"`
+
+	RDBRateAddr  string `env:"RATE_RDB_ADDR,required"`
+	RDBRatePort  string `env:"RATE_RDB_PORT,required"`
+	RDBLimiterDB int    `env:"RATE_RDB_DB,required"`
+
+	RDBQueueAddr string `env:"QUEUE_RDB_ADDR,required"`
+	RDBQueuePort string `env:"QUEUE_RDB_PORT,required"`
+	RDBQueueDB   int    `env:"QUEUE_RDB_DB,required"`
+
+	RDBPass string `env:"RDB_PASS,required"`
+}
+
+type AppConfig struct {
+	DebugLevel string `env:"DEBUG_LEVEL,required"`
+	Secret     string `env:"JWT_SECRET,required"`
+	Port       string `env:"PORT,required"`
+}
+
+func NewLoad() (*Config, error) {
+	var cfg Config
+
+	if err := env.Parse(&cfg.App); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Postgres); err != nil {
+		return nil, err
+	}
+
+	if err := env.Parse(&cfg.Redis); err != nil {
+		return nil, err
+	}
+
+	env := Env(cfg.App.DebugLevel)
+	if env != EnvProd && env != EnvDev {
+		return nil, fmt.Errorf("incorrect debug level: %s", env)
+	}
+
+	return &cfg, nil
+}
