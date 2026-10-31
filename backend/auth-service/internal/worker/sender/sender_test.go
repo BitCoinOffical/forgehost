@@ -52,7 +52,9 @@ func setupTestRabbit(t *testing.T) *rabbitmq.ResilientConnection {
 		Port: port.Port(),
 	}, zaptest.NewLogger(t))
 
-	t.Cleanup(rc.Close)
+	t.Cleanup(func() {
+		require.NoError(t, rc.Close())
+	})
 
 	return rc
 }
