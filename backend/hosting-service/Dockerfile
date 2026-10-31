@@ -14,6 +14,6 @@ FROM alpine
 
 WORKDIR /hosting
 
-COPY --from=builder /social/social-main .
+COPY --from=builder /hosting/hosting-main .
 
 RUN chmod +x hosting-main
