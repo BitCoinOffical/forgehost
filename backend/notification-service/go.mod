@@ -4,6 +4,7 @@ go 1.27.0
 
 require (
 	github.com/BitCoinOffical/forgehost-proto v0.1.2
+	github.com/DeRuina/timberjack v1.4.7
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/resend/resend-go/v2 v2.28.0
 	go.uber.org/zap v1.28.0
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/DeRuina/timberjack v1.4.7 // indirect
 	github.com/klauspost/compress v1.18.7 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
