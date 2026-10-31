@@ -25,7 +25,9 @@ func (r *ChatsRepo) CreateGroup(ctx context.Context, ownerID string, chat *model
 	if err != nil {
 		return "", fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	var chatID string
 	if err := tx.QueryRow(ctx, `INSERT INTO chats (title, description, owner_id) VALUES ($1, $2, $3) RETURNING id`, chat.Title, chat.Description, ownerID).Scan(&chatID); err != nil {
@@ -103,7 +105,9 @@ func (r *ChatsRepo) LeaveChat(ctx context.Context, chatID, userID string) error 
 	if err != nil {
 		return fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
@@ -142,7 +146,9 @@ func (r *ChatsRepo) BuildUpdateChat(ctx context.Context, chatID, userID string, 
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
@@ -200,7 +206,9 @@ func (r *ChatsRepo) SetUserRoleChat(ctx context.Context, ownerID string, members
 	if err != nil {
 		return nil, fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
@@ -248,7 +256,9 @@ func (r *ChatsRepo) KickUserFromChat(ctx context.Context, chatID, targetID, user
 	if err != nil {
 		return fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
@@ -322,7 +332,9 @@ func (r *ChatsRepo) BanUser(ctx context.Context, chatID, targetID, userID string
 	if err != nil {
 		return fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
@@ -362,7 +374,9 @@ func (r *ChatsRepo) UnbanUser(ctx context.Context, chatID, targetID, userID stri
 	if err != nil {
 		return fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var role string
 	err = tx.QueryRow(ctx, `
 	SELECT role 
