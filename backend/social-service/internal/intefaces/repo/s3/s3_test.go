@@ -115,7 +115,9 @@ func TestUpload(t *testing.T) {
 				Key:    aws.String(key),
 			})
 			require.NoError(t, err)
-			defer out.Body.Close()
+			t.Cleanup(func() {
+				require.NoError(t, out.Body.Close())
+			})
 
 			got, err := io.ReadAll(out.Body)
 			require.NoError(t, err)
@@ -158,8 +160,10 @@ func TestGetURL(t *testing.T) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	require.NoError(t, err)
-	defer resp.Body.Close()
 
+	t.Cleanup(func() {
+		require.NoError(t, resp.Body.Close())
+	})
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	got, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)

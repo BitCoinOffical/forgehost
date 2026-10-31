@@ -314,7 +314,9 @@ func (r *PostsRepo) CreatePost(ctx context.Context, post *models.Post) error {
 	if err != nil {
 		return fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	if post.ImageID != nil {
 		res, err := tx.Exec(ctx,

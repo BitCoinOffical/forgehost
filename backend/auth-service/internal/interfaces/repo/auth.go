@@ -78,7 +78,9 @@ func (r *AuthRepo) SaveGoogleUser(ctx context.Context, req *models.User, oathReq
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("r.pool.Begin: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	var userID uuid.UUID
 	err = tx.QueryRow(ctx, "SELECT user_id FROM oauth_accounts WHERE provider = $1 AND provider_user_id = $2", oathReq.Provider, oathReq.ProviderUserID).Scan(&userID)

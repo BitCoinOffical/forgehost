@@ -1,0 +1,196 @@
+basePath: /api/v1
+definitions:
+  dto.UpsertMinecraftServerDTO:
+    properties:
+      address:
+        type: string
+      edition:
+        enum:
+        - java
+        - bedrock
+        type: string
+      name:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+    required:
+    - address
+    - edition
+    - name
+    - port
+    type: object
+  models.MinecraftServer:
+    properties:
+      address:
+        type: string
+      checked_at:
+        type: string
+      created_at:
+        type: string
+      edition:
+        type: string
+      id:
+        type: string
+      latency_ms:
+        format: int64
+        type: integer
+      motd:
+        type: string
+      name:
+        type: string
+      online:
+        description: cache
+        type: boolean
+      players_max:
+        type: integer
+      players_online:
+        type: integer
+      port:
+        type: integer
+      updated_at:
+        type: string
+      version:
+        type: string
+    type: object
+  response.ErrorBody:
+    properties:
+      error:
+        type: string
+    type: object
+host: localhost:8085
+info:
+  contact:
+    name: ForgeHost Support
+    url: https://forgehost.ru
+  description: API for managing Minecraft worlds, server hosting and availability
+    monitoring.
+  termsOfService: http://swagger.io/terms/
+  title: ForgeHost Hosting Service API
+  version: "1.0"
+paths:
+  /minecraft:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MinecraftServer'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить список доступных Minecraft-серверов
+      tags:
+      - minecraft
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Данные Minecraft-сервера
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpsertMinecraftServerDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MinecraftServer'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Создать или обновить Minecraft-сервер
+      tags:
+      - minecraft
+  /minecraft/{world_id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID Minecraft-сервера
+        in: path
+        name: world_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      security:
+      - BearerAuth: []
+      summary: Удалить Minecraft-сервер
+      tags:
+      - minecraft
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID Minecraft-сервера
+        in: path
+        name: world_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MinecraftServer'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorBody'
+      summary: Получить Minecraft-сервер по ID
+      tags:
+      - minecraft
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

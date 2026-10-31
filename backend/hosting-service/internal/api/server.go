@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/BitCoinOffical/forgehost/hosting-service/config"
+	"github.com/BitCoinOffical/forgehost/hosting-service/internal/api/http/handlers"
+	"github.com/BitCoinOffical/forgehost/hosting-service/internal/api/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
@@ -19,14 +22,18 @@ const (
 type Server struct {
 	engine *gin.Engine
 	server *http.Server
+	m      *middleware.Middleware
+	h      *handlers.Handlers
 }
 
-func NewServer() *Server {
+func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers) *Server {
 	engine := gin.New()
 	return &Server{
 		engine: engine,
+		m:      m,
+		h:      h,
 		server: &http.Server{
-			Addr:        "",
+			Addr:        ":" + cfg.Port,
 			Handler:     engine,
 			ReadTimeout: timeoutSecond * time.Second,
 		},
@@ -38,14 +45,13 @@ func (s *Server) Run() error {
 	s.engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	api := s.engine.Group("/api/v1")
 	worlds := api.Group("/world")
+	worlds.Use(s.m.AuthMiddleware())
+	worlds.Use(s.m.RateLimiter())
 	{
-		worlds.GET("/minecraft")
-		worlds.GET("/minecraft/:world_id")
-		worlds.POST("/minecraft")
-		worlds.DELETE("/minecraft/:world_id")
-		worlds.PUT("/minecraft/:world_id/heartbeat")
-
-		worlds.GET("/search")
+		worlds.POST("/minecraft", s.h.Worlds.Create)
+		worlds.GET("/minecraft", s.h.Worlds.GetAll)
+		worlds.GET("/minecraft/:world_id", s.h.Worlds.GetByID)
+		worlds.DELETE("/minecraft/:world_id", s.h.Worlds.Delete)
 	}
 
 	return s.server.ListenAndServe()

@@ -74,7 +74,11 @@ func (h *UploaderHandler) UploadPostImage(c *gin.Context) {
 		response.InternalServerError(c, err, "failed open file", h.logger)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			h.logger.Error("failed to close uploaded file", zap.Error(err))
+		}
+	}()
 
 	buf := make([]byte, size)
 	n, err := file.Read(buf)
@@ -147,7 +151,11 @@ func (h *UploaderHandler) UploadAvatarImage(c *gin.Context) {
 		response.InternalServerError(c, err, "failed open file", h.logger)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			h.logger.Error("failed to close uploaded file", zap.Error(err))
+		}
+	}()
 
 	buf := make([]byte, size)
 	n, err := file.Read(buf)

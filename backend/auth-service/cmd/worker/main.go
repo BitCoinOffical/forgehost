@@ -62,9 +62,15 @@ func main() {
 	<-ctx.Done()
 	logger.Info("received a signal indicating the completion of operations")
 
-	client.Close()
-	logger.Info("gRPC conn closed")
+	if err := client.Close(); err != nil {
+		logger.Error("failed to close gRPC connection", zap.Error(err))
+	} else {
+		logger.Info("gRPC connection closed")
+	}
 
-	rc.Close()
-	logger.Info("rabbitMQ conn closed")
+	if err := rc.Close(); err != nil {
+		logger.Error("failed close rabbitMQ", zap.Error(err))
+	} else {
+		logger.Info("rabbitMQ conn closed")
+	}
 }

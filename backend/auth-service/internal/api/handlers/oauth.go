@@ -124,7 +124,11 @@ func (h *GoogleAuthHandler) GoogleCallback(c *gin.Context) {
 		response.BadGateway(c, err, "userinfo request failed", h.logger)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			h.logger.Error("failed to close OAuth response body", zap.Error(err))
+		}
+	}()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		response.InternalServerError(c, err, "read body error", h.logger)

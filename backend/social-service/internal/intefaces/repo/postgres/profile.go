@@ -32,7 +32,7 @@ func (r *ProfileRepo) GetProfileByID(ctx context.Context, id string) (*models.Pr
 		return nil, nil, fmt.Errorf("r.pool.Begin: %w", err)
 	}
 	defer func() {
-		tx.Rollback(context.Background())
+		_ = tx.Rollback(ctx)
 	}()
 	sql := `
 		SELECT p.user_id, p.username, p.bio, p.avatar_url, p.is_banned, p.created_at, p.updated_at, 

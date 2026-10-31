@@ -1,6 +1,7 @@
 package rabbitmq
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -22,7 +23,6 @@ type ResilientConnection struct {
 	conn            *amqp.Connection
 	channel         *amqp.Channel
 	mu              sync.RWMutex
-	publishMu       sync.Mutex
 	notifyClose     chan *amqp.Error
 	notifyChanClose chan *amqp.Error
 	isReady         bool
@@ -107,13 +107,19 @@ func (rc *ResilientConnection) connect() (*amqp.Connection, error) {
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
+		if closeErr := conn.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("conn.Close: %w", closeErr))
+		}
 		return nil, fmt.Errorf("conn.Channel: %w", err)
 	}
 
 	if err := ch.Confirm(false); err != nil {
-		ch.Close()
-		conn.Close()
+		if closeErr := ch.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("ch.Close: %w", closeErr))
+		}
+		if closeErr := conn.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("conn.Close: %w", closeErr))
+		}
 		return nil, fmt.Errorf("ch.Confirm: %w", err)
 	}
 
@@ -149,15 +155,22 @@ func (rc *ResilientConnection) NewChannel() (*amqp.Channel, error) {
 	}
 }
 
-func (rc *ResilientConnection) Close() {
+func (rc *ResilientConnection) Close() error {
+	var errs []error
 	close(rc.done)
 
 	rc.mu.Lock()
 	defer rc.mu.Unlock()
 	if rc.channel != nil {
-		rc.channel.Close()
+		if err := rc.channel.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("rc.channel.Close: %w", err))
+		}
 	}
 	if rc.conn != nil {
-		rc.conn.Close()
+		if err := rc.conn.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("rc.conn.Close: %w", err))
+		}
 	}
+
+	return errors.Join(errs...)
 }

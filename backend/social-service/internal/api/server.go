@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"time"
@@ -36,9 +37,11 @@ type Server struct {
 func NewServer(cfg *config.AppConfig, m *middleware.Middleware, h *handlers.Handlers, ws *ws.WebSockerHandlers) *Server {
 	engine := gin.New()
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		v.RegisterValidation("username", func(fl validator.FieldLevel) bool {
+		if err := v.RegisterValidation("username", func(fl validator.FieldLevel) bool {
 			return usernameRe.MatchString(fl.Field().String())
-		})
+		}); err != nil {
+			log.Fatal(err)
+		}
 	}
 	return &Server{
 		h:      h,

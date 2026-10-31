@@ -353,7 +353,9 @@ func TestSendMessageGroupBroadcast(t *testing.T) {
 		HTTPHeader: http.Header{"X-Test-User": {"receiver-id"}},
 	})
 	require.NoError(t, err)
-	defer conn.CloseNow()
+	t.Cleanup(func() {
+		require.NoError(t, conn.CloseNow())
+	})
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -371,7 +373,9 @@ func TestSendMessageGroupBroadcast(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	t.Cleanup(func() {
+		require.NoError(t, resp.Body.Close())
+	})
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
 	_, data, err := conn.Read(ctx)
