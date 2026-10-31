@@ -7,7 +7,6 @@ import (
 	"github.com/BitCoinOffical/forgehost/social-service/internal/api/response"
 	jwtpkg "github.com/BitCoinOffical/forgehost/social-service/pkg/jwt"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/ulule/limiter/v3"
@@ -56,14 +55,14 @@ func (m *Middleware) RateLimiter() gin.HandlerFunc {
 
 	rate, err := limiter.NewRateFromFormatted("1000-M")
 	if err != nil {
-		logger.Fatal("limiter.NewRateFromFormatted", zap.Error(err))
+		m.logger.Fatal("limiter.NewRateFromFormatted", zap.Error(err))
 	}
 
 	store, err := redisstore.NewStoreWithOptions(m.rdb, limiter.StoreOptions{
 		Prefix: prefix,
 	})
 	if err != nil {
-		logger.Fatal("redisstore.NewStoreWithOptions:", zap.Error(err))
+		m.logger.Fatal("redisstore.NewStoreWithOptions:", zap.Error(err))
 	}
 	instance := limiter.New(store, rate)
 
