@@ -39,8 +39,6 @@
 
 Backend разделён на четыре самостоятельных Go-модуля. Для разных задач используются отдельные хранилища и механизмы обмена сообщениями: PostgreSQL хранит постоянные реляционные данные, Redis — временное состояние и кэш, MongoDB — сообщения личных и групповых чатов, SeaweedFS предоставляет S3-совместимое объектное хранилище, а Kafka, RabbitMQ и Redis Streams обслуживают разные сценарии асинхронной обработки.
 
-> **Границы репозитория:** в текущей ветке `main` находятся backend-сервисы и инфраструктура. Исходников клиентского приложения / frontend в дереве этого репозитория нет.
-
 ## Возможности
 
 | Направление | Что реализовано |
@@ -58,9 +56,9 @@ Backend разделён на четыре самостоятельных Go-м�
 
 ### Общая схема
 
-Схемы сохранены как статические PNG, поэтому GitHub отображает их как обычные изображения — без выполнения Mermaid-рендерера. Рядом лежат SVG-исходники для масштабирования и дальнейшего редактирования.
-
 ![Общая архитектура ForgeHost](docs/architecture/forgehost.jpg)
+
+https://www.figma.com/board/rC2kYrgvvfJFtsc2Bf3eT0/forgehost?node-id=0-1&p=f&t=8PBkllmBl9Zyzncp-0
 
 ### Мониторинг Minecraft-миров
 
@@ -68,11 +66,7 @@ PostgreSQL — источник постоянных регистрационн�
 
 ![Поток проверки Minecraft-миров](docs/architecture/hosting-monitoring.png)
 
-<sub>[Открыть SVG-исходник схемы](docs/architecture/hosting-monitoring.svg)</sub>
-
 **Успешная проверка:** Worker сохраняет статус, latency, версию, MOTD и данные об игроках в Redis, после чего подтверждает сообщение через `XACK`.
-
-**Ошибка проверки:** Worker удаляет мир из online-кэша и не отправляет `XACK`. Сообщение остаётся в Pending Entries List. В текущем коде отдельное восстановление таких сообщений через `XPENDING` / `XAUTOCLAIM` не реализовано.
 
 ### Регистрация и отправка email
 
@@ -80,20 +74,15 @@ PostgreSQL — источник постоянных регистрационн�
 
 ![Асинхронная отправка писем](docs/architecture/auth-email-flow.png)
 
-<sub>[Открыть SVG-исходник схемы](docs/architecture/auth-email-flow.svg)</sub>
-
 ### Наблюдаемость
 
 Метрики и логи собираются разными компонентами. Prometheus опрашивает настроенные targets, Grafana Alloy читает лог-файлы и отправляет их в Loki, Grafana используется для визуализации.
 
 ![Схема наблюдаемости](docs/architecture/observability.png)
 
-<sub>[Открыть SVG-исходник схемы](docs/architecture/observability.svg)</sub>
-
 ## Сервисы и ответственность
 
-В репозитории четыре Go-модуля. Некоторые из них запускаются несколькими отдельными процессами — это не отдельные Go-модули.
-
+В репозитории четыре микросервиса.
 | Процесс | Назначение | Основные зависимости |
 |---|---|---|
 | `auth-service` | HTTP API регистрации, входа, токенов, паролей и Google OAuth. Публикует события пользователей. | PostgreSQL, Redis, RabbitMQ, Kafka, Google OAuth |
@@ -240,7 +229,7 @@ backend/notification-service/.env
 backend/hosting-service/.env
 ```
 
-Создай их локально и заполни значениями для своего окружения. Файлы с секретами не добавляй в Git.
+Создайте их локально и заполните значениями для своего окружения.
 
 **`backend/auth-service/.env`** — `DEBUG_LEVEL`, `JWT_SECRET`, `PORT`, `KAFKA_ADDR`, `WEB_GOOGLE_CLIENT_ID`, `WEB_GOOGLE_CLIENT_SECRET`, `WEB_GOOGLE_REDIRECT_URL`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `RABBITMQ_DEFAULT_USER`, `RABBITMQ_DEFAULT_PASS`, `RABBITMQ_DEFAULT_HOST`, `RABBITMQ_DEFAULT_PORT`, `SESSION_RDB_ADDR`, `SESSION_RDB_PORT`, `SESSION_RDB_DB`, `RATE_RDB_ADDR`, `RATE_RDB_PORT`, `RATE_RDB_DB`, `RDB_PASS`, `NOTIFICATION_GRPC_ADDR`.
 
@@ -250,9 +239,9 @@ backend/hosting-service/.env
 
 **`backend/notification-service/.env`** — `PORT`, `DEBUG_LEVEL`, `NETWORK`, `ADDRESS`, `RESEND_API_KEY`.
 
-Корневой `.env` передаётся контейнеру Grafana. Для Docker Compose в качестве адресов зависимостей внутри сети обычно используются имена сервисов: `postgres-auth`, `postgres-social`, `postgres-hosting`, `redis-auth`, `redis-social`, `redis-hosting`, `rabbitmq`, `kafka`, `mongo-social` и `seaweedfs`. Для gRPC-клиента Auth Service укажи внутренний адрес Notification Service.
+Корневой `.env` передаётся контейнеру Grafana. Для Docker Compose в качестве адресов зависимостей внутри сети обычно используются имена сервисов: `postgres-auth`, `postgres-social`, `postgres-hosting`, `redis-auth`, `redis-social`, `redis-hosting`, `rabbitmq`, `kafka`, `mongo-social` и `seaweedfs`. Для gRPC-клиента Auth Service укажите внутренний адрес Notification Service.
 
-Terraform использует значения `s3_access_key` и `s3_secret_key` из локального `infra/terraform/terraform.tfvars`. Не коммить реальные credentials или state-файлы.
+Terraform использует значения `s3_access_key` и `s3_secret_key` из локального `infra/terraform/terraform.tfvars`.
 
 ### Запуск стека
 
@@ -378,6 +367,6 @@ Swagger/OpenAPI спецификации хранятся в репозитор�
 
 <div align="center">
 
-**ForgeHost — backend-инфраструктура для игровых сообществ.**
+**ForgeHost — backend-инфраструктура для игровых соц сетей.**
 
 </div>
