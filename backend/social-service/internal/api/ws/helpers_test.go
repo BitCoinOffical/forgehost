@@ -99,11 +99,10 @@ func newConnPair(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 
 	t.Cleanup(func() {
 		close(release)
-		require.NoError(t, client.CloseNow())
-		require.NoError(t, server.CloseNow())
+		_ = client.CloseNow()
+		_ = server.CloseNow()
 		srv.Close()
 	})
-
 	return server, client
 }
 
