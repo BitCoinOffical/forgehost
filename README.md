@@ -13,7 +13,7 @@
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-4.0-FF6600?logo=rabbitmq&logoColor=white)](https://www.rabbitmq.com/)
 [![Terraform](https://img.shields.io/badge/Terraform-IaC-7B42BC?logo=terraform&logoColor=white)](https://www.terraform.io/)
 
-**[Репозиторий](https://github.com/BitCoinOffical/forgehost) · [Сайт проекта](https://forgehost.ru) · [CI](https://github.com/BitCoinOffical/forgehost/actions)**
+**[Репозиторий](https://github.com/BitCoinOffical/forgehost) · [CI](https://github.com/BitCoinOffical/forgehost/actions)**
 
 </div>
 
