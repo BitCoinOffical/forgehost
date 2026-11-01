@@ -38,16 +38,32 @@ func (h *Hub) Unregister(userID string, c *websocket.Conn) {
 }
 
 func (h *Hub) Broadcast(ctx context.Context, targetIDs []string, msg any) {
+	if ctx.Err() != nil {
+		return
+	}
+
 	for _, targetID := range targetIDs {
+		if ctx.Err() != nil {
+			return
+		}
+
 		h.mu.RLock()
 		conns := make([]*websocket.Conn, 0, len(h.conns[targetID]))
 		for conn := range h.conns[targetID] {
 			conns = append(conns, conn)
 		}
 		h.mu.RUnlock()
+
 		for _, c := range conns {
+			if ctx.Err() != nil {
+				return
+			}
+
 			if err := wsjson.Write(ctx, c, msg); err != nil {
-				h.logger.Error("ws write", zap.String("target id", targetID), zap.Error(err))
+				h.logger.Error("ws write",
+					zap.String("target id", targetID),
+					zap.Error(err),
+				)
 			}
 		}
 	}
