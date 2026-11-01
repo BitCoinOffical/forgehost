@@ -85,7 +85,8 @@ func (m *MinecraftChecker) Check(ctx context.Context, world *models.MinecraftSer
 		return nil, fmt.Errorf("unsupported edition: %s", world.Edition)
 	}
 
-	result.Latency = time.Since(started)
+	latency := time.Since(started)
+	result.Latency = latency.Milliseconds()
 
 	return result, nil
 }
