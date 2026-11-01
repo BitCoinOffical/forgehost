@@ -13,13 +13,13 @@ type MinecraftServer struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
 
 	//cache
-	Online        bool          `json:"online"`
-	Latency       time.Duration `json:"latency_ms" swaggertype:"integer" format:"int64"`
-	PlayersOnline int64         `json:"players_online"`
-	PlayersMax    int64         `json:"players_max"`
-	Version       string        `json:"version"`
-	MOTD          string        `json:"motd"`
-	CheckedAt     time.Time     `json:"checked_at"`
+	Online        bool      `json:"online"`
+	Latency       int64     `json:"latency_ms"`
+	PlayersOnline int64     `json:"players_online"`
+	PlayersMax    int64     `json:"players_max"`
+	Version       string    `json:"version"`
+	MOTD          string    `json:"motd"`
+	CheckedAt     time.Time `json:"checked_at"`
 }
 
 type MinecraftServerCheckPayload struct {
@@ -30,10 +30,10 @@ type MinecraftServerCheckPayload struct {
 }
 
 type MinecraftStatus struct {
-	Online        bool          `json:"online"`
-	Latency       time.Duration `json:"latency_ms" swaggertype:"integer" format:"int64"`
-	PlayersOnline int64         `json:"players_online"`
-	PlayersMax    int64         `json:"players_max"`
-	Version       string        `json:"version"`
-	MOTD          string        `json:"motd"`
+	Online        bool   `json:"online"`
+	Latency       int64  `json:"latency_ms"`
+	PlayersOnline int64  `json:"players_online"`
+	PlayersMax    int64  `json:"players_max"`
+	Version       string `json:"version"`
+	MOTD          string `json:"motd"`
 }
