@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/BitCoinOffical/forgehost/hosting-service/internal/domain/models"
 	work_mocks "github.com/BitCoinOffical/forgehost/hosting-service/internal/worker/mock"
@@ -17,7 +16,7 @@ import (
 func TestWorkerPool(t *testing.T) {
 	status := &models.MinecraftStatus{
 		Online:        true,
-		Latency:       150 * time.Millisecond,
+		Latency:       150,
 		PlayersOnline: 4,
 		PlayersMax:    20,
 		Version:       "1.21.1",
